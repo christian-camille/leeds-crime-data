@@ -2,6 +2,12 @@
 
 A complete ETL (Extract, Transform, Load) pipeline for collecting, processing, and enriching street-level crime data for the Leeds metropolitan area. The pipeline aggregates data from the UK Police API and historical archives, producing a comprehensive dataset spanning **January 2018 to October 2025** with over **900,000 crime records**.
 
+<p align="center">
+  <img src="https://files.catbox.moe/7a1kyy.png" width="900" alt="Leeds Crime Heatmap 2018-2025">
+  <br>
+  <b>Figure 1:</b> <i>Geospatial density of 900,000+ crime records across the Leeds metropolitan area.</i>
+</p>
+
 ## Project Highlights
 
 - **Data Engineering**: Automated month-by-month API fetching with rate limiting, error handling, and incremental processing.
