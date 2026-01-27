@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leeds Crime Heatmap</title>
+    <meta name="description" content="Interactive heatmap visualization of crime data in Leeds, UK. Filter by crime type and date range.">
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <aside class="sidebar">
+            <header class="sidebar-header">
+                <h1>Leeds Crime Map</h1>
+                <p class="subtitle">2018 - 2025</p>
+            </header>
+
+            <div class="controls">
+                <div class="control-group">
+                    <label for="crime-type">Crime Type</label>
+                    <select id="crime-type">
+                        <option value="all">All Crimes</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label>Year Range</label>
+                    <div class="range-inputs">
+                        <select id="year-start"></select>
+                        <span class="range-separator">to</span>
+                        <select id="year-end"></select>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label>Month Range</label>
+                    <div class="range-inputs">
+                        <select id="month-start">
+                            <option value="01">January</option>
+                            <option value="02">February</option>
+                            <option value="03">March</option>
+                            <option value="04">April</option>
+                            <option value="05">May</option>
+                            <option value="06">June</option>
+                            <option value="07">July</option>
+                            <option value="08">August</option>
+                            <option value="09">September</option>
+                            <option value="10">October</option>
+                            <option value="11">November</option>
+                            <option value="12">December</option>
+                        </select>
+                        <span class="range-separator">to</span>
+                        <select id="month-end">
+                            <option value="01">January</option>
+                            <option value="02">February</option>
+                            <option value="03">March</option>
+                            <option value="04">April</option>
+                            <option value="05">May</option>
+                            <option value="06">June</option>
+                            <option value="07">July</option>
+                            <option value="08">August</option>
+                            <option value="09">September</option>
+                            <option value="10">October</option>
+                            <option value="11">November</option>
+                            <option value="12">December</option>
+                        </select>
+                    </div>
+                </div>
+
+                <button id="apply-filters" class="btn-primary">Apply Filters</button>
+                <button id="reset-filters" class="btn-secondary">Reset</button>
+            </div>
+
+            <div class="stats-panel">
+                <div class="stat">
+                    <span class="stat-value" id="total-crimes">-</span>
+                    <span class="stat-label">Total Crimes</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-value" id="date-range">-</span>
+                    <span class="stat-label">Date Range</span>
+                </div>
+            </div>
+
+            <footer class="sidebar-footer">
+                <p>Data: <a href="https://data.police.uk" target="_blank">UK Police API</a></p>
+            </footer>
+        </aside>
+
+        <main class="map-container">
+            <div id="map"></div>
+            <div class="loading-overlay" id="loading">
+                <div class="spinner"></div>
+                <p>Loading crime data...</p>
+            </div>
+        </main>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
