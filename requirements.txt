@@ -5,3 +5,6 @@ shapely
 tqdm
 pytest
 pytest-timeout
+matplotlib
+seaborn
+plotly
