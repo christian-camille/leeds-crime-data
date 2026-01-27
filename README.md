@@ -14,6 +14,7 @@ A complete ETL (Extract, Transform, Load) pipeline for collecting, processing, a
 - **Geospatial Processing**: Point-in-polygon validation using `Shapely` to ensure all records fall within Leeds administrative boundaries.
 - **Data Enrichment**: Batch geocoding via the `postcodes.io` API to append Ward Names and Postcode Districts.
 - **Dataset Normalisation**: Unified format across API and archive sources with consistent crime categorisation.
+- **Interactive Visualisation**: Web-based dashboard for exploring crime hotspots and temporal trends.
 
 ## Dataset Features
 
@@ -113,6 +114,30 @@ python src/merge_datasets.py
 python src/enrich_data.py
 
 ```
+
+## Interactive Dashboard
+
+The project includes a lightweight, interactive dashboard to visualise the crime data. It uses **Leaflet.js** for mapping and offers dynamic filtering by crime type, date range, and location.
+
+### Features
+* **Heatmap Visualisation**: Dynamic density map of crime hotspots.
+* **Temporal Filtering**: Analyse trends over specific years and months.
+* **Category Filtering**: Isolate specific crime types (e.g., "Burglary").
+* **Ward Breakdown**: Top 5 wards by crime count for the selected period.
+
+### Running the Dashboard
+
+To avoid CORS issues when loading the data, serve the dashboard using a local web server:
+
+```bash
+# Navigate to the dashboard directory
+cd dashboard
+
+# Start a local server (Python 3)
+python -m http.server 8000
+```
+
+Then open your browser to `http://localhost:8000`.
 
 ## Project Structure
 
