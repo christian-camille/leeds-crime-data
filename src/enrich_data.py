@@ -176,6 +176,35 @@ def enrich_data():
     
     print(f"Applied. Hits: {count_hit}, Misses: {count_miss}")
     
+    # Strict Ward Filtering
+    VALID_LEEDS_WARDS = {
+        "Adel & Wharfedale", "Alwoodley", "Ardsley & Robin Hood", "Armley", 
+        "Beeston & Holbeck", "Bramley & Stanningley", "Burmantofts & Richmond Hill", 
+        "Calverley & Farsley", "Chapel Allerton", "Cross Gates & Whinmoor", 
+        "Farnley & Wortley", "Garforth & Swillington", "Gipton & Harehills", 
+        "Guiseley & Rawdon", "Harewood", "Headingley & Hyde Park", "Horsforth", 
+        "Hunslet & Riverside", "Killingbeck & Seacroft", "Kippax & Methley", 
+        "Kirkstall", "Little London & Woodhouse", "Middleton Park", "Moortown", 
+        "Morley North", "Morley South", "Otley & Yeadon", "Pudsey", "Rothwell", 
+        "Roundhay", "Temple Newsam", "Weetwood", "Wetherby"
+    }
+
+    initial_count = len(df)
+    
+    # Identify non-Leeds wards before dropping (excluding Unknown)
+    invalid_wards_df = df[~df['Ward Name'].isin(VALID_LEEDS_WARDS) & (df['Ward Name'] != 'Unknown')]
+    if not invalid_wards_df.empty:
+        print("\n--- Removing Outlier Wards ---")
+        print(invalid_wards_df['Ward Name'].value_counts().to_string())
+        print("------------------------------\n")
+    
+    # Keep Valid Leeds Wards OR Unknown
+    df = df[df['Ward Name'].isin(VALID_LEEDS_WARDS) | (df['Ward Name'] == 'Unknown')]
+    dropped_count = initial_count - len(df)
+    
+    if dropped_count > 0:
+        print(f"Removed {dropped_count} entries outside of valid Leeds wards (kept 'Unknown').")
+    
     print(f"Saving to {input_file} (overwriting)...")
     temp_save = input_file + ".tmp"
     df.to_csv(temp_save, index=False)
