@@ -28,6 +28,8 @@ async function init() {
         const response = await fetch(`data/crime_data.json?v=${new Date().getTime()}`);
         crimeData = await response.json();
 
+        loadWardBoundaries();
+
         const locationCounts = {};
         maxCrimeCount = 0;
 
@@ -240,28 +242,150 @@ function applyFilters() {
         }
     });
 
-    if (heatLayer) {
-        map.removeLayer(heatLayer);
-    }
+    if (currentMapMode === 'heatmap') {
+        if (geoJsonLayer) map.removeLayer(geoJsonLayer);
 
-    heatLayer = L.heatLayer(heatPoints, {
-        radius: 25,
-        blur: 35,
-        maxZoom: 15,
-        max: saturationPoint > 0 ? saturationPoint : 1,
-        gradient: {
-            0.0: '#0d0887',
-            0.2: '#5302a3',
-            0.4: '#8b0aa5',
-            0.6: '#db5c68',
-            0.8: '#febd2a',
-            1.0: '#f0f921'
+        if (heatLayer) {
+            map.removeLayer(heatLayer);
         }
-    }).addTo(map);
+
+        heatLayer = L.heatLayer(heatPoints, {
+            radius: 25,
+            blur: 35,
+            maxZoom: 15,
+            max: saturationPoint > 0 ? saturationPoint : 1,
+            gradient: {
+                0.0: '#0d0887',
+                0.2: '#5302a3',
+                0.4: '#8b0aa5',
+                0.6: '#db5c68',
+                0.8: '#febd2a',
+                1.0: '#f0f921'
+            }
+        }).addTo(map);
+    } else {
+        if (heatLayer) map.removeLayer(heatLayer);
+        updateChoropleth(filteredPoints);
+    }
 
     updateStats(filteredPoints, params);
     updateWardChart(filteredPoints);
 }
+
+let wardGeoJsonData = null;
+let geoJsonLayer = null;
+
+async function loadWardBoundaries() {
+    try {
+        const response = await fetch('data/leeds_wards.geojson');
+        wardGeoJsonData = await response.json();
+    } catch (e) {
+        console.error("Failed to load ward boundaries", e);
+    }
+}
+
+function updateChoropleth(points) {
+    if (!wardGeoJsonData) return;
+
+    const wardCounts = {};
+    let maxCount = 0;
+
+    points.forEach(point => {
+        const [, , , , , count, , , wardIdx] = point;
+
+        if (wardIdx !== undefined) {
+            const wardName = crimeData.w[wardIdx];
+            wardCounts[wardName] = (wardCounts[wardName] || 0) + count;
+        }
+    });
+
+    Object.values(wardCounts).forEach(c => {
+        if (c > maxCount) maxCount = c;
+    });
+
+    if (geoJsonLayer) map.removeLayer(geoJsonLayer);
+
+    function getColor(d) {
+        return d > maxCount * 0.9 ? '#800026' :
+            d > maxCount * 0.8 ? '#A00026' :
+                d > maxCount * 0.7 ? '#BD0026' :
+                    d > maxCount * 0.6 ? '#D50F23' :
+                        d > maxCount * 0.5 ? '#E31A1C' :
+                            d > maxCount * 0.4 ? '#F03523' :
+                                d > maxCount * 0.3 ? '#FC4E2A' :
+                                    d > maxCount * 0.2 ? '#FD7534' :
+                                        d > maxCount * 0.1 ? '#FD8D3C' :
+                                            d > maxCount * 0.05 ? '#FEB24C' :
+                                                d > 0 ? '#FFEDA0' :
+                                                    '#FFEDA0';
+    }
+
+    function style(feature) {
+        const count = wardCounts[feature.properties.WARD_NAME] || 0;
+        return {
+            fillColor: getColor(count),
+            weight: 2,
+            opacity: 1,
+            color: 'white',
+            dashArray: '3',
+            fillOpacity: 0.4
+        };
+    }
+
+    function highlightFeature(e) {
+        const layer = e.target;
+        layer.setStyle({
+            weight: 5,
+            color: '#666',
+            dashArray: '',
+            fillOpacity: 0.7
+        });
+        layer.bringToFront();
+
+        info.update(layer.feature.properties, wardCounts[layer.feature.properties.WARD_NAME] || 0);
+    }
+
+    function resetHighlight(e) {
+        geoJsonLayer.resetStyle(e.target);
+        info.update();
+    }
+
+    function onEachFeature(feature, layer) {
+        layer.on({
+            mouseover: highlightFeature,
+            mouseout: resetHighlight,
+            click: (e) => {
+                L.DomEvent.stopPropagation(e); // Prevent map/layer click events from triggering selection boxes
+            }
+        });
+        const count = wardCounts[feature.properties.WARD_NAME] || 0;
+        layer.bindTooltip(`<strong>${feature.properties.WARD_NAME}</strong><br>${count.toLocaleString()} crimes`);
+    }
+
+    geoJsonLayer = L.geoJson(wardGeoJsonData, {
+        style: style,
+        onEachFeature: onEachFeature
+    }).addTo(map);
+
+    if (!window.infoControlAdded) {
+        info.addTo(map);
+        window.infoControlAdded = true;
+    }
+}
+
+const info = L.control();
+
+info.onAdd = function (map) {
+    this._div = L.DomUtil.create('div', 'info');
+    this.update();
+    return this._div;
+};
+
+info.update = function (props, count) {
+    this._div.innerHTML = '<h4>Ward Crime Stats</h4>' + (props ?
+        '<b>' + props.WARD_NAME + '</b><br />' + count + ' crimes'
+        : 'Hover over a ward');
+};
 
 function updateStats(points, params) {
     const totalCrimes = points.reduce((sum, p) => sum + p[5], 0);
@@ -277,9 +401,8 @@ function updateWardChart(points) {
     const wardTotals = {};
 
     points.forEach(point => {
-        const [lat, lon, pType, pYear, pMonth, count, isCityCentre, distIdx] = point;
+        const [lat, lon, pType, pYear, pMonth, count, isCityCentre, distIdx, wardIdx] = point;
 
-        const wardIdx = crimeData.dw[distIdx];
         if (wardIdx !== undefined) {
             const wardName = crimeData.w[wardIdx];
             if (!wardTotals[wardName]) {
@@ -381,5 +504,32 @@ document.getElementById('ward-modal').addEventListener('click', (e) => {
 document.getElementById('reset-filters').addEventListener('click', resetFilters);
 document.getElementById('crime-type').addEventListener('change', applyFilters);
 document.getElementById('exclude-city-centre').addEventListener('change', applyFilters);
+const viewHeatmapBtn = document.getElementById('view-heatmap');
+const viewWardsBtn = document.getElementById('view-wards');
+let currentMapMode = 'heatmap';
+
+viewHeatmapBtn.addEventListener('click', () => setMapMode('heatmap'));
+viewWardsBtn.addEventListener('click', () => setMapMode('wards'));
+
+function setMapMode(mode) {
+    if (currentMapMode === mode) return;
+    currentMapMode = mode;
+
+    const intensityControl = document.getElementById('intensity-slider').parentElement;
+
+    if (mode === 'heatmap') {
+        viewHeatmapBtn.classList.add('active');
+        viewWardsBtn.classList.remove('active');
+        if (geoJsonLayer) map.removeLayer(geoJsonLayer);
+        intensityControl.style.display = 'block';
+    } else {
+        viewWardsBtn.classList.add('active');
+        viewHeatmapBtn.classList.remove('active');
+        if (heatLayer) map.removeLayer(heatLayer);
+        intensityControl.style.display = 'none';
+    }
+
+    applyFilters();
+}
 
 document.addEventListener('DOMContentLoaded', init);
