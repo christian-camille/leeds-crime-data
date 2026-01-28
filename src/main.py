@@ -64,7 +64,7 @@ PIPELINE_STEPS = [
     {
         "num": 5,
         "name": "Enrich Data",
-        "desc": "Adds Ward Names and Postcode Districts via geocoding",
+        "desc": "Adds Ward Names, Postcode Districts, and Polling Districts via geocoding",
         "func": enrich_data,
         "args": ()
     },

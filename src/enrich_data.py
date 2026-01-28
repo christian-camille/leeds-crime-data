@@ -63,8 +63,83 @@ def enrich_data():
             res = future.result()
             coord_map.update(res)
             
-    print(f"Enrichment lookup complete in {time.time() - start_time:.1f}s")
+
+
+    print(f"Postcode/Ward lookup complete in {time.time() - start_time:.1f}s")
+    print("Starting Polling District enrichment (Bulk Fetch & Local Join)...")
     
+    polling_districts_data = [] # List of (shape, code, ward)
+    
+    try:
+        url = "https://mapservices.leeds.gov.uk/arcgis/rest/services/Public/Boundary/MapServer/7/query"
+        params = {
+            "where": "1=1",
+            "outFields": "POLLING_DI,WARD",
+            "returnGeometry": "true",
+            "f": "json",
+            "outSR": "4326"
+        }
+        print("Fetching all polling district boundaries...")
+        resp = requests.get(url, params=params, timeout=30)
+        
+        if resp.status_code == 200:
+            data = resp.json()
+            features = data.get("features", [])
+            print(f"Retrieved {len(features)} polling district features.")
+            
+            from shapely.geometry import shape, Point
+            from shapely.prepared import prep
+            
+            for feat in features:
+                attr = feat.get("attributes", {})
+                geom = feat.get("geometry", {})
+                
+                if geom and "rings" in geom:
+                    
+                    poly = None
+                    try:
+                        poly = shape({"type": "Polygon", "coordinates": geom["rings"]})
+                    except:
+                         from shapely.geometry import Polygon
+                         if len(geom["rings"]) > 0:
+                             poly = Polygon(geom["rings"][0], geom["rings"][1:])
+                    
+                    if poly:
+                        polling_districts_data.append({
+                            "poly": poly,
+                            "prepared": prep(poly),
+                            "code": attr.get("POLLING_DI"),
+                            "ward": attr.get("WARD")
+                        })
+        else:
+            print(f"Failed to fetch boundaries: {resp.status_code}")
+            
+    except Exception as e:
+        print(f"Error fetching/parsing polygons: {e}")
+        
+    print(f"Built {len(polling_districts_data)} spatial objects.")
+    
+    print("Performing spatial join...")
+    polling_map = {}
+    
+    hits = 0
+    from shapely.geometry import Point
+    
+    for row in tqdm(unique_coords.itertuples(index=False), total=len(unique_coords), desc="Spatial Join"):
+        pt = Point(row.Longitude, row.Latitude)
+        found = False
+        
+        for item in polling_districts_data:
+            if item["prepared"].contains(pt):
+                polling_map[(row.Latitude, row.Longitude)] = item["code"]
+                input_ward = item["ward"]
+                # Optionally use this ward if missing from postcode lookup
+                found = True
+                hits += 1
+                break
+        
+    print(f"Spatial join complete. Matches: {hits}/{len(unique_coords)}")
+
     print("Applying mappings to main dataset...")
     
     lats = df['Latitude'].values
@@ -72,23 +147,32 @@ def enrich_data():
     
     wards = []
     pcds = []
+    polling_districts = []
     
     count_hit = 0
     count_miss = 0
     
     for lat, lon in zip(lats, lons):
         val = coord_map.get((lat, lon))
+        ward_val = "Unknown"
+        pcd_val = "Unknown"
+        
         if val:
-            wards.append(val['ward'])
-            pcds.append(val['pcd'])
+            ward_val = val['ward']
+            pcd_val = val['pcd']
             count_hit += 1
         else:
-            wards.append("Unknown")
-            pcds.append("Unknown")
             count_miss += 1
+            
+        pd_val = polling_map.get((lat, lon), "Unknown")
+        
+        wards.append(ward_val)
+        pcds.append(pcd_val)
+        polling_districts.append(pd_val)
             
     df['Ward Name'] = wards
     df['Postcode District'] = pcds
+    df['Polling District'] = polling_districts
     
     print(f"Applied. Hits: {count_hit}, Misses: {count_miss}")
     

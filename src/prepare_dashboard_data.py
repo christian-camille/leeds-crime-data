@@ -42,9 +42,13 @@ def prepare_dashboard_data():
     
     df_clean['is_city_centre'] = (df_clean['Ward Name'] == CITY_CENTRE_WARD).astype(int)
     
+    polling_districts = sorted(df_clean['Polling District'].astype(str).unique().tolist())
+    dist_map = {d: i for i, d in enumerate(polling_districts)}
+    df_clean['dist_idx'] = df_clean['Polling District'].astype(str).map(dist_map)
+    
     print("Aggregating by grid cell, crime type, ward, and year-month...")
     grouped = df_clean.groupby(
-        ['lat_idx', 'lon_idx', 'Crime type', 'Year', 'MonthNum', 'is_city_centre']
+        ['lat_idx', 'lon_idx', 'Crime type', 'Year', 'MonthNum', 'is_city_centre', 'dist_idx']
     ).size().reset_index(name='count')
     
     grouped['lat'] = grouped['lat_idx'].apply(lambda x: round(lat_centers[x], 4))
@@ -59,6 +63,7 @@ def prepare_dashboard_data():
     print(f"Crime types: {len(crime_types)}")
     print(f"Years: {years}")
     print(f"Wards: {len(wards)}")
+    print(f"Polling Districts: {len(polling_districts)}")
     print(f"Aggregated points: {len(grouped):,}")
     
     points = []
@@ -70,32 +75,27 @@ def prepare_dashboard_data():
             int(row['Year']),
             int(row['MonthNum']),
             int(row['count']),
-            int(row['is_city_centre'])
+            int(row['is_city_centre']),
+            int(row['dist_idx'])
         ])
     
-    print("Building ward data...")
-    ward_data = df_clean.groupby(['Ward Name', 'Crime type', 'Year', 'MonthNum']).size().reset_index(name='count')
-    ward_points = []
-    for _, row in ward_data.iterrows():
-        ward_points.append([
-            row['Ward Name'],
-            crime_type_map[row['Crime type']],
-            int(row['Year']),
-            int(row['MonthNum']),
-            int(row['count'])
-        ])
-    
+    print("Building Polling District -> Ward mapping...")
+    pd_ward_map = df_clean.groupby('Polling District')['Ward Name'].first().to_dict()
+    ward_map = {w: i for i, w in enumerate(wards)}
+    dist_ward_indices = [ward_map[pd_ward_map[d]] for d in polling_districts]
+
     output_data = {
         't': crime_types,
         'y': [int(y) for y in years],
         'w': wards,
+        'pd': polling_districts,
+        'dw': dist_ward_indices,
         'cc': CITY_CENTRE_WARD,
         'c': {
             'lat': round((min_lat + max_lat) / 2, 4),
             'lon': round((min_lon + max_lon) / 2, 4)
         },
-        'p': points,
-        'wd': ward_points
+        'p': points
     }
     
     os.makedirs(os.path.dirname(OUTPUT_PATH), exist_ok=True)
