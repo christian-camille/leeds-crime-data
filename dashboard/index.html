@@ -67,6 +67,7 @@
             <div class="chart-panel">
                 <h3>Top 5 Wards</h3>
                 <div id="wards-chart"></div>
+                <button id="show-all-wards" class="btn-link">Show All</button>
             </div>
 
             <footer class="sidebar-footer">
@@ -90,6 +91,17 @@
                 <p>Loading crime data...</p>
             </div>
         </main>
+    </div>
+
+    <div id="ward-modal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>All Wards</h2>
+                <button class="close-modal">&times;</button>
+            </div>
+            <div id="modal-ward-list" class="modal-body">
+            </div>
+        </div>
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>

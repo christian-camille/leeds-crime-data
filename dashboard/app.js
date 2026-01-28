@@ -11,6 +11,7 @@ let totalMonths = 0;
 let minDateTimestamp = 0;
 let intensitySlider;
 let maxCrimeCount = 100;
+let currentWardData = [];
 
 async function init() {
     map = L.map('map', {
@@ -230,7 +231,6 @@ function applyFilters() {
     const minFilterIndex = Math.floor((minFilterPercent / 100) * numPoints);
     const minFilter = numPoints > 0 ? sortedCounts[Math.min(minFilterIndex, numPoints - 1)] : 0;
 
-    // Calculate saturation point from sensitivity percentile
     const sensitivityIndex = Math.floor((sensitivityPercent / 100) * numPoints);
     const saturationPoint = numPoints > 0 ? sortedCounts[Math.min(sensitivityIndex, numPoints - 1)] : 1;
 
@@ -290,16 +290,22 @@ function updateWardChart(points) {
     });
 
     const sortedWards = Object.entries(wardTotals)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 5);
+        .sort((a, b) => b[1] - a[1]);
 
+    currentWardData = sortedWards;
+
+    const totalVisibleCrimes = sortedWards.reduce((sum, item) => sum + item[1], 0);
+
+    const top5Wards = sortedWards.slice(0, 5);
     const maxCount = sortedWards.length > 0 ? sortedWards[0][1] : 1;
 
     const chartContainer = document.getElementById('wards-chart');
     chartContainer.innerHTML = '';
 
-    sortedWards.forEach(([ward, count]) => {
+    top5Wards.forEach(([ward, count]) => {
         const percentage = (count / maxCount) * 100;
+
+        const percentageOfTotal = (count / totalVisibleCrimes) * 100;
 
         const barDiv = document.createElement('div');
         barDiv.className = 'ward-bar';
@@ -308,7 +314,10 @@ function updateWardChart(points) {
             <div class="ward-bar-container">
                 <div class="ward-bar-fill" style="width: ${percentage}%"></div>
             </div>
-            <span class="ward-count">${count.toLocaleString()}</span>
+            <div class="ward-stats">
+                <span class="ward-abs">${count.toLocaleString()}</span>
+                <span class="ward-percent">${percentageOfTotal.toFixed(1)}%</span>
+            </div>
         `;
         chartContainer.appendChild(barDiv);
     });
@@ -327,6 +336,47 @@ function resetFilters() {
 
     applyFilters();
 }
+
+function showAllWards() {
+    const modal = document.getElementById('ward-modal');
+    const listContainer = document.getElementById('modal-ward-list');
+    listContainer.innerHTML = '';
+
+    const maxCount = currentWardData.length > 0 ? currentWardData[0][1] : 1;
+
+    const totalVisibleCrimes = currentWardData.reduce((sum, item) => sum + item[1], 0);
+
+    currentWardData.forEach(([ward, count]) => {
+        const percentage = (count / maxCount) * 100;
+        const percentageOfTotal = (count / totalVisibleCrimes) * 100;
+
+        const barDiv = document.createElement('div');
+        barDiv.className = 'ward-bar';
+        barDiv.innerHTML = `
+            <span class="ward-name" title="${ward}">${ward}</span>
+            <div class="ward-bar-container">
+                <div class="ward-bar-fill" style="width: ${percentage}%"></div>
+            </div>
+            <div class="ward-stats">
+                <span class="ward-abs">${count.toLocaleString()}</span>
+                <span class="ward-percent">${percentageOfTotal.toFixed(1)}%</span>
+            </div>
+        `;
+        listContainer.appendChild(barDiv);
+    });
+
+    modal.classList.remove('hidden');
+}
+
+function closeWardModal() {
+    document.getElementById('ward-modal').classList.add('hidden');
+}
+
+document.getElementById('show-all-wards').addEventListener('click', showAllWards);
+document.querySelector('.close-modal').addEventListener('click', closeWardModal);
+document.getElementById('ward-modal').addEventListener('click', (e) => {
+    if (e.target.id === 'ward-modal') closeWardModal();
+});
 
 document.getElementById('reset-filters').addEventListener('click', resetFilters);
 document.getElementById('crime-type').addEventListener('change', applyFilters);
