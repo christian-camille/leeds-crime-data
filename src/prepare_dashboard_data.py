@@ -46,19 +46,22 @@ def prepare_dashboard_data():
     dist_map = {d: i for i, d in enumerate(polling_districts)}
     df_clean['dist_idx'] = df_clean['Polling District'].astype(str).map(dist_map)
     
-    print("Aggregating by grid cell, crime type, ward, and year-month...")
-    grouped = df_clean.groupby(
-        ['lat_idx', 'lon_idx', 'Crime type', 'Year', 'MonthNum', 'is_city_centre', 'dist_idx']
-    ).size().reset_index(name='count')
-    
-    grouped['lat'] = grouped['lat_idx'].apply(lambda x: round(lat_centers[x], 4))
-    grouped['lon'] = grouped['lon_idx'].apply(lambda x: round(lon_centers[x], 4))
-    
     crime_types = sorted(df_clean['Crime type'].unique().tolist())
     years = sorted(df_clean['Year'].unique().tolist())
     wards = sorted(df_clean['Ward Name'].unique().tolist())
     
     crime_type_map = {ct: i for i, ct in enumerate(crime_types)}
+    ward_map = {w: i for i, w in enumerate(wards)}
+    
+    df_clean['ward_idx'] = df_clean['Ward Name'].map(ward_map)
+    
+    print("Aggregating by grid cell, crime type, ward, and year-month...")
+    grouped = df_clean.groupby(
+        ['lat_idx', 'lon_idx', 'Crime type', 'Year', 'MonthNum', 'is_city_centre', 'dist_idx', 'ward_idx']
+    ).size().reset_index(name='count')
+    
+    grouped['lat'] = grouped['lat_idx'].apply(lambda x: round(lat_centers[x], 4))
+    grouped['lon'] = grouped['lon_idx'].apply(lambda x: round(lon_centers[x], 4))
     
     print(f"Crime types: {len(crime_types)}")
     print(f"Years: {years}")
@@ -76,12 +79,12 @@ def prepare_dashboard_data():
             int(row['MonthNum']),
             int(row['count']),
             int(row['is_city_centre']),
-            int(row['dist_idx'])
+            int(row['dist_idx']),
+            int(row['ward_idx'])
         ])
     
     print("Building Polling District -> Ward mapping...")
     pd_ward_map = df_clean.groupby('Polling District')['Ward Name'].first().to_dict()
-    ward_map = {w: i for i, w in enumerate(wards)}
     dist_ward_indices = [ward_map[pd_ward_map[d]] for d in polling_districts]
 
     output_data = {

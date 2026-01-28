@@ -23,6 +23,8 @@ from merge_datasets import merge_datasets
 from enrich_data import enrich_data
 from patch_enrichment import patch_enrichment
 from download_archives import download_latest
+from fetch_wards import fetch_wards
+from prepare_dashboard_data import prepare_dashboard_data
 
 
 PIPELINE_STEPS = [
@@ -73,6 +75,20 @@ PIPELINE_STEPS = [
         "name": "Patch Enrichment",
         "desc": "Fills in missing Ward/Postcode data with wider search radius",
         "func": patch_enrichment,
+        "args": ()
+    },
+    {
+        "num": 7,
+        "name": "Fetch Ward Boundaries",
+        "desc": "Fetches and processes official ward boundaries from MapServer",
+        "func": fetch_wards,
+        "args": ()
+    },
+    {
+        "num": 8,
+        "name": "Prepare Dashboard Data",
+        "desc": "Aggregates enriched data into optimized JSON for the dashboard",
+        "func": prepare_dashboard_data,
         "args": ()
     }
 ]
