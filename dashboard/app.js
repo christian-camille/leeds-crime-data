@@ -12,6 +12,7 @@ let minDateTimestamp = 0;
 let intensitySlider;
 let maxCrimeCount = 100;
 let currentWardData = [];
+let maxAvailableDate = { year: 0, month: 0 };
 
 async function init() {
     map = L.map('map', {
@@ -32,8 +33,15 @@ async function init() {
 
         const locationCounts = {};
         maxCrimeCount = 0;
+        maxAvailableDate = { year: 0, month: 0 };
 
         crimeData.p.forEach(p => {
+            // Track max date
+            if (p[3] > maxAvailableDate.year || (p[3] === maxAvailableDate.year && p[4] > maxAvailableDate.month)) {
+                maxAvailableDate.year = p[3];
+                maxAvailableDate.month = p[4];
+            }
+
             const key = `${p[0]},${p[1]}`;
             const newCount = (locationCounts[key] || 0) + p[5];
             locationCounts[key] = newCount;
@@ -98,8 +106,7 @@ function initSlider() {
     const slider = document.getElementById('date-slider');
 
     const startYear = crimeData.y[0];
-    const endYear = crimeData.y[crimeData.y.length - 1];
-    totalMonths = (endYear - startYear + 1) * 12;
+    totalMonths = (maxAvailableDate.year - startYear) * 12 + maxAvailableDate.month;
     minDateTimestamp = new Date(startYear, 0).getTime();
 
     noUiSlider.create(slider, {
