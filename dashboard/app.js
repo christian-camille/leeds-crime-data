@@ -287,20 +287,27 @@ async function loadWardBoundaries() {
 function updateChoropleth(points) {
     if (!wardGeoJsonData) return;
 
+    // Track total and type breakdown per ward
     const wardCounts = {};
     let maxCount = 0;
 
     points.forEach(point => {
-        const [, , , , , count, , , wardIdx] = point;
+        const [, , pType, , , count, , , wardIdx] = point;
 
         if (wardIdx !== undefined) {
             const wardName = crimeData.w[wardIdx];
-            wardCounts[wardName] = (wardCounts[wardName] || 0) + count;
+            if (!wardCounts[wardName]) {
+                wardCounts[wardName] = { total: 0, types: {} };
+            }
+
+            wardCounts[wardName].total += count;
+            // Track crime type counts
+            wardCounts[wardName].types[pType] = (wardCounts[wardName].types[pType] || 0) + count;
         }
     });
 
-    Object.values(wardCounts).forEach(c => {
-        if (c > maxCount) maxCount = c;
+    Object.values(wardCounts).forEach(data => {
+        if (data.total > maxCount) maxCount = data.total;
     });
 
     if (geoJsonLayer) map.removeLayer(geoJsonLayer);
@@ -321,7 +328,8 @@ function updateChoropleth(points) {
     }
 
     function style(feature) {
-        const count = wardCounts[feature.properties.WARD_NAME] || 0;
+        const data = wardCounts[feature.properties.WARD_NAME];
+        const count = data ? data.total : 0;
         return {
             fillColor: getColor(count),
             weight: 2,
@@ -342,7 +350,8 @@ function updateChoropleth(points) {
         });
         layer.bringToFront();
 
-        info.update(layer.feature.properties, wardCounts[layer.feature.properties.WARD_NAME] || 0);
+        const data = wardCounts[layer.feature.properties.WARD_NAME];
+        info.update(layer.feature.properties, data);
     }
 
     function resetHighlight(e) {
@@ -359,7 +368,8 @@ function updateChoropleth(points) {
                 showWardDetails(feature.properties.WARD_NAME);
             }
         });
-        const count = wardCounts[feature.properties.WARD_NAME] || 0;
+        const data = wardCounts[feature.properties.WARD_NAME];
+        const count = data ? data.total : 0;
         layer.bindTooltip(`<strong>${feature.properties.WARD_NAME}</strong><br>${count.toLocaleString()} crimes`);
     }
 
@@ -368,7 +378,7 @@ function updateChoropleth(points) {
         onEachFeature: onEachFeature
     }).addTo(map);
 
-    if (!window.infoControlAdded) {
+    if (!window.infoControlAdded && currentMapMode !== 'heatmap') {
         info.addTo(map);
         window.infoControlAdded = true;
     }
@@ -382,10 +392,41 @@ info.onAdd = function (map) {
     return this._div;
 };
 
-info.update = function (props, count) {
-    this._div.innerHTML = '<h4>Ward Crime Stats</h4>' + (props ?
-        '<b>' + props.WARD_NAME + '</b><br />' + count + ' crimes'
-        : 'Hover over a ward');
+info.update = function (props, data) {
+    const isAllCrimes = document.getElementById('crime-type').value === 'all';
+
+    let content = '<h4>Ward Crime Stats</h4>';
+
+    if (props) {
+        const total = data ? data.total : 0;
+        content += `<b>${props.WARD_NAME}</b><br />${total.toLocaleString()} crimes`;
+
+        // Add Full Crime Type Breakdown if "All Crimes" is selected
+        if (isAllCrimes && data && data.types) {
+            const sortedCrimes = Object.entries(data.types)
+                .sort((a, b) => b[1] - a[1]); // Sort desc by count
+
+            if (sortedCrimes.length > 0) {
+                content += '<div class="tooltip-header">CRIME BREAKDOWN:</div>';
+                content += '<div class="tooltip-crime-list">';
+
+                sortedCrimes.forEach(([typeIdx, count]) => {
+                    const typeName = crimeData.t[typeIdx];
+                    const percentage = total > 0 ? ((count / total) * 100).toFixed(1) : 0;
+
+                    content += `<div class="tooltip-crime-item">
+                        <span>${typeName}</span>
+                        <b>${count.toLocaleString()} (${percentage}%)</b>
+                    </div>`;
+                });
+                content += '</div>';
+            }
+        }
+    } else {
+        content += 'Hover over a ward';
+    }
+
+    this._div.innerHTML = content;
 };
 
 function updateStats(points, params) {
@@ -523,11 +564,19 @@ function setMapMode(mode) {
         viewWardsBtn.classList.remove('active');
         if (geoJsonLayer) map.removeLayer(geoJsonLayer);
         intensityControl.style.display = 'block';
+        if (window.infoControlAdded) {
+            info.remove();
+            window.infoControlAdded = false;
+        }
     } else {
         viewWardsBtn.classList.add('active');
         viewHeatmapBtn.classList.remove('active');
         if (heatLayer) map.removeLayer(heatLayer);
         intensityControl.style.display = 'none';
+        if (!window.infoControlAdded) {
+            info.addTo(map);
+            window.infoControlAdded = true;
+        }
     }
 
     applyFilters();

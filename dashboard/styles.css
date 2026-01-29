@@ -688,6 +688,40 @@ select:focus {
     font-size: 1rem;
 }
 
+.tooltip-header {
+    margin-top: 8px;
+    font-size: 0.7rem;
+    color: #9090a0;
+    font-weight: 600;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    padding-top: 6px;
+    margin-bottom: 4px;
+}
+
+.tooltip-crime-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.tooltip-crime-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 24px;
+    font-size: 0.75rem;
+    line-height: 1.3;
+}
+
+.tooltip-crime-item span {
+    color: var(--text-secondary);
+}
+
+.tooltip-crime-item b {
+    color: var(--text-primary);
+    font-size: 0.75rem;
+}
+
 .leaflet-interactive:focus {
     outline: none !important;
 }
