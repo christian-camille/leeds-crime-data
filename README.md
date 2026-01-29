@@ -1,8 +1,8 @@
-# Leeds Crime Data 
+# Leeds Crime Intelligence Platform
 
 A comprehensive geospatial intelligence platform for the Leeds metropolitan area. This project combines a robust ETL pipeline with an interactive web dashboard to visualise over **900,000 crime records** spanning **2018–2025**. It integrates data from the **UK Police API**, **Leeds City Council**, and **ONS**, providing hyper-local insights through heatmaps, ward-level choropleths, and temporal trend analysis.
 
-<p align="center">
+<p align=`"center">
   <img src="https://user.fm/files/v2-77083e47adabc7343a4c878338cf8497/Screenshot%202026-01-28%20154135.png" width="900" alt="Leeds Crime Heatmap 2018-2025">
   <br>
   <b>Figure 1:</b> <i>Interactive dashboard showing crime density across Leeds (2018-2025).</i>
