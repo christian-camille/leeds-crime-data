@@ -1,11 +1,15 @@
 # Leeds Crime Intelligence Platform
 
-A comprehensive geospatial intelligence platform for the Leeds metropolitan area. This project combines a robust ETL pipeline with an interactive web dashboard to visualise over **900,000 crime records** spanning **2018–2025**. It integrates data from the **UK Police API**, **Leeds City Council**, and **ONS**, providing hyper-local insights through heatmaps, ward-level choropleths, and temporal trend analysis.
 
-<p align=`"center">
-  <img src="https://user.fm/files/v2-77083e47adabc7343a4c878338cf8497/Screenshot%202026-01-28%20154135.png" width="900" alt="Leeds Crime Heatmap 2018-2025">
+[![View Dashboard](https://img.shields.io/badge/Live_Dashboard-FF4B4B?style=for-the-badge&logo=leaflet&logoColor=white)](https://christian-camille.github.io/leeds-crime-data/)
+[![Build Status](https://img.shields.io/badge/Build-Passing-brightgreen?style=for-the-badge)](https://github.com/christian-camille/leeds-crime-data/actions)
+
+A comprehensive geospatial intelligence platform for the Leeds metropolitan area. This project combines a robust ETL pipeline with an interactive web dashboard to visualise over **900,000 crime records** spanning **2018–2025**. You can explore the data interactively on the [Live Dashboard](https://christian-camille.github.io/leeds-crime-data/). It integrates data from the **UK Police API**, **Leeds City Council**, and **ONS**, providing hyper-local insights through heatmaps, ward-level choropleths, and temporal trend analysis.
+
+<p align="center">
+  <img src="assets/dashboard.png" width="600" alt="Leeds Crime Dashboard" border="1">
   <br>
-  <b>Figure 1:</b> <i>Interactive dashboard showing crime density across Leeds (2018-2025).</i>
+  <span style="font-size: 16px; font-weight: bold;">Leeds Crime Dashboard</span>
 </p>
 
 ## Project Highlights
@@ -15,6 +19,14 @@ A comprehensive geospatial intelligence platform for the Leeds metropolitan area
 - **Geospatial Intelligence**: Precise point-in-polygon validation (`Shapely`) and batch geocoding (`postcodes.io`) to enrich every crime record with administrative boundaries.
 - **Data Normalisation**: Unified schema across disparate sources (API vs Archive) to ensure consistent categorisation and analysis.
 - **Optimised Performance**: Pre-aggregated data structures (`JSON`) to ensure sub-second rendering of nearly a million data points in the browser.
+
+## Data Pipeline
+
+<p align="center">
+  <img src="assets/data-diagram.svg" width="300" alt="End-to-end data pipeline">
+  
+</p>
+
 
 ## Dataset Features
 
@@ -30,17 +42,14 @@ A comprehensive geospatial intelligence platform for the Leeds metropolitan area
 | Polling District | Voting district code (e.g., "LWE") |
 | Outcome | Case outcome where available |
 
+
 ## Tech Stack
 
-### Data Pipeline
 - **Python 3.12** - Core ETL logic
 - **Pandas & NumPy** - High-performance data manipulation
 - **Shapely** - Geospatial operations and polygon validation
 - **Requests** - Robust API integration
 - **Pytest** - Automated testing suite
-
-
-
 
 
 ## Installation
@@ -54,8 +63,8 @@ A comprehensive geospatial intelligence platform for the Leeds metropolitan area
 
 ```bash
 # Clone the repository
-git clone https://github.com/reed-sh/leeds-crimes.git
-cd leeds-crimes
+git clone https://github.com/christian-camille/leeds-crime-data.git
+cd leeds-crime-data
 
 # Create virtual environment (recommended)
 python -m venv venv
