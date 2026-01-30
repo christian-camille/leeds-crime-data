@@ -113,6 +113,7 @@ function initSlider() {
         start: [0, totalMonths - 1],
         connect: true,
         step: 1,
+        behaviour: 'drag',
         range: {
             'min': 0,
             'max': totalMonths - 1
@@ -125,14 +126,32 @@ function initSlider() {
                 return Math.round(value);
             }
         },
-        tooltips: {
-            to: function (value) {
-                return formatMonthYear(value);
-            }
-        }
+        tooltips: false
     });
 
-    slider.noUiSlider.on('update', function () {
+    const tooltipContainer = document.createElement('div');
+    tooltipContainer.className = 'merged-tooltip';
+    slider.appendChild(tooltipContainer);
+
+    slider.noUiSlider.on('update', function (values) {
+        const v0 = parseInt(values[0]);
+        const v1 = parseInt(values[1]);
+
+        const percent0 = (v0 / (totalMonths - 1)) * 100;
+        const percent1 = (v1 / (totalMonths - 1)) * 100;
+        const centerPercent = (percent0 + percent1) / 2;
+
+        tooltipContainer.style.left = `${centerPercent}%`;
+
+        if (centerPercent < 20) {
+            tooltipContainer.style.transform = `translateX(-${centerPercent * 2.5}%)`;
+        } else if (centerPercent > 80) {
+            tooltipContainer.style.transform = `translateX(-${100 - (100 - centerPercent) * 2.5}%)`;
+        } else {
+            tooltipContainer.style.transform = `translateX(-50%)`;
+        }
+
+        tooltipContainer.innerHTML = `${formatMonthYear(v0)} — ${formatMonthYear(v1)}`;
         applyFilters();
     });
 }

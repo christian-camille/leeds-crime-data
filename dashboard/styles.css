@@ -78,6 +78,7 @@ body {
 
 .control-group {
     margin-bottom: 24px;
+    overflow: visible;
 }
 
 .control-group label {
@@ -118,16 +119,22 @@ select:focus {
 }
 
 .range-slider {
-    margin: 36px 12px 24px 12px;
+    margin: 48px 12px 24px 12px;
     height: 6px;
     border-radius: 3px;
     border: none;
     box-shadow: none;
     background: var(--bg-input);
+    overflow: visible;
 }
 
 .noUi-connect {
     background: var(--accent);
+    cursor: grab;
+}
+
+.noUi-connect:active {
+    cursor: grabbing;
 }
 
 .noUi-horizontal .noUi-handle {
@@ -166,6 +173,24 @@ select:focus {
     padding: 4px 8px;
     border-radius: 4px;
     bottom: 24px;
+}
+
+.merged-tooltip {
+    position: absolute;
+    top: -32px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--bg-card);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    font-size: 0.7rem;
+    font-family: var(--font-family);
+    padding: 4px 10px;
+    border-radius: 4px;
+    white-space: nowrap;
+    pointer-events: none;
+    z-index: 10;
+    transition: left 0.1s ease-out;
 }
 
 .btn-primary,
