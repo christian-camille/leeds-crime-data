@@ -12,28 +12,116 @@ Usage:
 """
 
 import argparse
+import os
 import sys
 import time
 from datetime import datetime
 
-from combine_leeds_data import combine_leeds_data
+from combine_leeds_data import combine_leeds_data, get_available_archive_months
 from fetch_data import fetch_crime_data
 from process_api_data import process_api_data
 from merge_datasets import merge_datasets
 from enrich_data import enrich_data
 from patch_enrichment import patch_enrichment
-from download_archives import download_latest
+from download_archives import download_since
 from fetch_wards import fetch_wards
 from prepare_dashboard_data import prepare_dashboard_data
+
+
+def add_month(year: int, month: int) -> tuple[int, int]:
+    if month == 12:
+        return year + 1, 1
+    return year, month + 1
+
+
+def previous_month(today: datetime) -> tuple[int, int]:
+    if today.month == 1:
+        return today.year - 1, 12
+    return today.year, today.month - 1
+
+
+def get_api_fetch_range(base_dir: str = "data/archive") -> tuple[str, str] | None:
+    """Return incremental API fetch range after latest archive month, or None if up to date."""
+    archive_months = get_available_archive_months(base_dir)
+
+    end_year, end_month = previous_month(datetime.now())
+    end_label = f"{end_year:04d}-{end_month:02d}"
+
+    if not archive_months:
+        return "2022-11", end_label
+
+    latest_archive = archive_months[-1]
+    latest_year, latest_month = map(int, latest_archive.split("-"))
+    start_year, start_month = add_month(latest_year, latest_month)
+
+    if (start_year, start_month) > (end_year, end_month):
+        return None
+
+    start_label = f"{start_year:04d}-{start_month:02d}"
+    return start_label, end_label
+
+
+def fetch_api_incremental_data() -> None:
+    """Fetch API data only for months not already covered by archive snapshots."""
+    api_range = get_api_fetch_range()
+    if api_range is None:
+        print("Archive data already covers all months up to last complete month. Skipping API fetch.")
+        return
+
+    start_date, end_date = api_range
+    print(f"Incremental API fetch range: {start_date} to {end_date}")
+    fetch_crime_data(start_date, end_date)
+
+
+def print_preflight_checks(steps_to_run: list[dict]) -> None:
+    """Print quick sanity checks before running selected pipeline steps."""
+    step_numbers = {step["num"] for step in steps_to_run}
+
+    print()
+    print("Preflight checks")
+    print("-" * 60)
+
+    archive_dir = "data/archive"
+    if 0 in step_numbers or 1 in step_numbers or 2 in step_numbers:
+        if not os.path.exists(archive_dir):
+            print(f"[!] Archive directory missing: {archive_dir}")
+        else:
+            seed_months = get_available_archive_months(archive_dir, include_zip=True)
+            extracted_months = get_available_archive_months(archive_dir, include_zip=False)
+
+            if seed_months:
+                print(
+                    f"[✓] Archive seeds: {len(seed_months)} month label(s), "
+                    f"range {seed_months[0]} to {seed_months[-1]}"
+                )
+            else:
+                print("[!] No archive month folders or ZIPs found in data/archive")
+
+            if extracted_months:
+                print(
+                    f"[✓] Extracted month folders: {len(extracted_months)}, "
+                    f"range {extracted_months[0]} to {extracted_months[-1]}"
+                )
+            else:
+                print("[i] No extracted month folders yet (Step 1 will extract from ZIPs if available)")
+
+    if 2 in step_numbers:
+        api_range = get_api_fetch_range()
+        if api_range is None:
+            print("[i] API fetch: skipped (archive coverage already up to last complete month)")
+        else:
+            print(f"[✓] API fetch range: {api_range[0]} to {api_range[1]}")
+
+    print("-" * 60)
 
 
 PIPELINE_STEPS = [
     {
         "num": 0,
         "name": "Download Archive Data",
-        "desc": "Downloads historical crime data archives from Police.uk",
-        "func": download_latest,
-        "args": ()
+        "desc": "Downloads historical crime data archives from Police.uk (from 2018-01 onward)",
+        "func": download_since,
+        "args": (2018, 1)
     },
     {
         "num": 1,
@@ -45,9 +133,9 @@ PIPELINE_STEPS = [
     {
         "num": 2,
         "name": "Fetch API Data",
-        "desc": "Fetches crime data from the UK Police API",
-        "func": fetch_crime_data,
-        "args": ("2022-11", "2025-12")
+        "desc": "Fetches incremental crime data from the UK Police API",
+        "func": fetch_api_incremental_data,
+        "args": ()
     },
     {
         "num": 3,
@@ -151,6 +239,7 @@ def run_pipeline(start_step=0, end_step=None, single_step=None):
         steps_to_run = [s for s in PIPELINE_STEPS if start_step <= s["num"] <= end]
     
     print(f"Running {len(steps_to_run)} step(s): {', '.join(str(s['num']) for s in steps_to_run)}")
+    print_preflight_checks(steps_to_run)
     
     pipeline_start = time.time()
     failed_step = None
@@ -205,12 +294,12 @@ Examples:
         print_step_list()
         return 0
     
-    if args.step and args.from_step:
+    if args.step is not None and args.from_step is not None:
         print("Error: Cannot use --step and --from together.")
         return 1
     
     success = run_pipeline(
-        start_step=args.from_step or 1,
+        start_step=args.from_step if args.from_step is not None else 0,
         end_step=args.to,
         single_step=args.step
     )
