@@ -33,6 +33,8 @@ def fetch_crime_data(start_date, end_date, output_dir="data/raw"):
             
         print(f"Fetching data for {date}...")
         all_crimes = []
+        status_counts = {}
+        month_unavailable = False
         
         count = 0
         total_points = len(lats) * len(lons)
@@ -45,6 +47,7 @@ def fetch_crime_data(start_date, end_date, output_dir="data/raw"):
                     
                 try:
                     response = requests.get(base_url, params={'lat': lat, 'lng': lon, 'date': date}, timeout=10)
+                    status_counts[response.status_code] = status_counts.get(response.status_code, 0) + 1
                     
                     if response.status_code == 200:
                         data = response.json()
@@ -55,13 +58,30 @@ def fetch_crime_data(start_date, end_date, output_dir="data/raw"):
                         response = requests.get(base_url, params={'lat': lat, 'lng': lon, 'date': date}, timeout=10)
                         if response.status_code == 200:
                              all_crimes.extend(response.json())
+                        else:
+                            status_counts[response.status_code] = status_counts.get(response.status_code, 0) + 1
+                    elif response.status_code == 404:
+                        print(f"Date {date} is not available from Police API (HTTP 404). Skipping this month.")
+                        month_unavailable = True
+                        break
                     else:
-                        print(f"Error {response.status_code} for {date} at {lat},{lon}: {response.text}")
+                        pass
                         
                 except Exception as e:
                     print(f"Exception for {date} at {lat},{lon}: {e}")
                 
                 time.sleep(0.1)
+
+            if month_unavailable:
+                break
+
+        if month_unavailable:
+            continue
+
+        non_success_status = {code: count for code, count in status_counts.items() if code != 200}
+        if non_success_status:
+            status_summary = ", ".join(f"{code}:{count}" for code, count in sorted(non_success_status.items()))
+            print(f"HTTP status summary for {date}: {status_summary}")
         
         if all_crimes:
             df = pd.DataFrame(all_crimes)
