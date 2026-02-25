@@ -11,3 +11,6 @@ data/processed/*
 !data/processed/.gitkeep
 data/raw/*
 !data/raw/.gitkeep
+
+**/__pycache__/
+*.pyc

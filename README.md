@@ -4,7 +4,7 @@
 [![View Dashboard](https://img.shields.io/badge/Live_Dashboard-FF4B4B?style=for-the-badge&logo=leaflet&logoColor=white)](https://christian-camille.github.io/leeds-crime-data/)
 [![Build Status](https://img.shields.io/badge/Build-Passing-brightgreen?style=for-the-badge)](https://github.com/christian-camille/leeds-crime-data/actions)
 
-A comprehensive geospatial intelligence platform for the Leeds metropolitan area. This project combines a robust ETL pipeline with an interactive web dashboard to visualise over **900,000 crime records** spanning **2018–2025**. You can explore the data interactively on the [Live Dashboard](https://christian-camille.github.io/leeds-crime-data/). It integrates data from the **UK Police API**, **Leeds City Council**, and **ONS**, providing hyper-local insights through heatmaps, ward-level choropleths, and temporal trend analysis.
+A comprehensive geospatial intelligence platform for the Leeds metropolitan area. This project combines a robust ETL pipeline with an interactive web dashboard to visualise over **1,000,000 crime records** spanning **2017–2025**. You can explore the data interactively on the [Live Dashboard](https://christian-camille.github.io/leeds-crime-data/). It integrates data from the **UK Police API**, **Leeds City Council**, and **ONS**, providing hyper-local insights through heatmaps, ward-level choropleths, and temporal trend analysis.
 
 <p align="center">
   <img src="assets/dashboard.png" width="600" alt="Leeds Crime Dashboard" border="1">
@@ -18,7 +18,7 @@ A comprehensive geospatial intelligence platform for the Leeds metropolitan area
 - **Robust ETL Pipeline**: Automated ingestion system that handles incremental updates, rate limiting, and historical data merging.
 - **Geospatial Intelligence**: Precise point-in-polygon validation (`Shapely`) and batch geocoding (`postcodes.io`) to enrich every crime record with administrative boundaries.
 - **Data Normalisation**: Unified schema across disparate sources (API vs Archive) to ensure consistent categorisation and analysis.
-- **Optimised Performance**: Pre-aggregated data structures (`JSON`) to ensure sub-second rendering of nearly a million data points in the browser.
+- **Optimised Performance**: Pre-aggregated data structures (`JSON`) to ensure sub-second rendering of over one million data points in the browser.
 
 ## Data Pipeline
 
@@ -92,24 +92,31 @@ python src/main.py
 
 If you prefer to run the stages manually:
 
-**0. Download Historical Data** Downloads archived crime data from Police.uk (required for historical analysis).
+**0. Download Historical Data** Downloads archived crime data from Police.uk (required for historical analysis). For full history, backfill from Jan-2017 using compact mode (minimum snapshot archives).
 
 ```bash
-python src/download_archives.py --latest
+python src/download_archives.py --since 2017-01
 
 ```
 
-**1. Generate Archive Data** Aggregates historical data from local archive files.
+Optional (slower, more redundant downloads):
+
+```bash
+python src/download_archives.py --since 2017-01 --all-months
+
+```
+
+**1. Generate Archive Data** Aggregates historical data from local archive files (auto-discovers available months from `data/archive` folders or `YYYY-MM.zip` archives, extracts ZIPs on demand, then removes extracted ZIP files).
 
 ```bash
 python src/combine_leeds_data.py
 
 ```
 
-**2. Fetch API Data** Fetches the most recent "fresh" data from the UK Police API.
+**2. Fetch API Data** Fetches incremental "fresh" data from the UK Police API (months not covered by archive snapshots).
 
 ```bash
-python src/fetch_data.py
+python src/main.py --step 2
 
 ```
 
@@ -135,7 +142,7 @@ python src/fetch_wards.py
 
 ```
 
-**6. Prepare Dashboard** transforming the processed CSV into optimised JSON for the web interface.
+**6. Prepare Dashboard** Transforms the processed CSV into optimised JSON for the web interface.
 
 ```bash
 python src/prepare_dashboard_data.py
@@ -226,7 +233,7 @@ pytest tests/ -v
 ## Output
 
 The pipeline produces two primary artifacts:
-1. **`data/processed/leeds_street_combined.csv`**: The master dataset containing **~906,000 records** with 100% Ward/Postcode coverage, ideal for deep analysis (EDA) or ML modelling.
+1. **`data/processed/leeds_street_combined.csv`**: The master dataset containing **1,000,000+ records** (covering **Jan 2017 to Dec 2025**) with 100% Ward/Postcode coverage, ideal for deep analysis (EDA) or ML modelling.
 2. **`dashboard/data/crime_data.json`**: An optimised, minified structure containing pre-aggregated indices and spatial coordinates, powering the real-time web dashboard.
 
 ## License
