@@ -14,6 +14,25 @@ let maxCrimeCount = 100;
 let currentWardData = [];
 let maxAvailableDate = { year: 0, month: 0 };
 
+async function fetchJsonFromCandidates(paths) {
+    let lastError = null;
+
+    for (const path of paths) {
+        try {
+            const response = await fetch(`${path}?v=${new Date().getTime()}`);
+            if (!response.ok) {
+                lastError = new Error(`HTTP ${response.status} for ${path}`);
+                continue;
+            }
+            return await response.json();
+        } catch (error) {
+            lastError = error;
+        }
+    }
+
+    throw lastError || new Error('Could not load crime_data.json from any known path.');
+}
+
 async function init() {
     map = L.map('map', {
         zoomControl: true,
@@ -26,8 +45,15 @@ async function init() {
     }).addTo(map);
 
     try {
-        const response = await fetch(`data/crime_data.json?v=${new Date().getTime()}`);
-        crimeData = await response.json();
+        if (window.location.protocol === 'file:') {
+            throw new Error('This dashboard cannot load JSON over file://. Run a local web server and open http://localhost:8000.');
+        }
+
+        crimeData = await fetchJsonFromCandidates([
+            'data/crime_data.json',
+            './data/crime_data.json',
+            '/dashboard/data/crime_data.json'
+        ]);
 
         loadWardBoundaries();
 
@@ -58,7 +84,8 @@ async function init() {
     } catch (error) {
         console.error('Failed to load crime data:', error);
         document.getElementById('loading').innerHTML = `
-            <p style="color: var(--danger);">Failed to load data. Please ensure crime_data.json exists.</p>
+            <p style="color: var(--danger);">Failed to load data: ${error.message}</p>
+            <p style="margin-top: 8px; color: #b3b3b3;">Tip: run <code>python -m http.server 8000</code> inside the <code>dashboard</code> folder.</p>
         `;
     }
 }
