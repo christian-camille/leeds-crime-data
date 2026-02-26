@@ -600,8 +600,14 @@ select:focus {
     border-bottom: 1px solid var(--border-color);
     display: flex;
     justify-content: space-between;
-    align-items: center;
+    align-items: flex-start;
     background: rgba(255, 255, 255, 0.02);
+}
+
+.modal-header-text {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
 }
 
 .modal-header h2 {
@@ -831,4 +837,36 @@ select:focus {
 
 .spark-bar:hover {
     opacity: 1;
+}
+
+.ward-subtitle {
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--accent);
+    background: rgba(99, 102, 241, 0.12);
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    padding: 2px 8px;
+    border-radius: 4px;
+    display: inline-block;
+}
+
+.spark-section {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.spark-year-row {
+    position: relative;
+    height: 14px;
+}
+
+.spark-year-label {
+    position: absolute;
+    font-size: 0.65rem;
+    color: var(--text-secondary);
+    transform: translateX(-50%);
+    white-space: nowrap;
 }

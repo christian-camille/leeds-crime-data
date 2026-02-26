@@ -697,7 +697,20 @@ function showWardDetails(wardName) {
     const last12Months = getSumForPeriod(lastYear, lastMonth, 12);
 
     // Render Modal Content
+    const crimeTypeValue = document.getElementById('crime-type').value;
+    const crimeTypeLabel = crimeTypeValue === 'all' ? 'All Crimes' : crimeTypeValue;
     document.getElementById('ward-details-title').textContent = wardName;
+    document.getElementById('ward-details-subtitle').textContent = crimeTypeLabel;
+    document.getElementById('ward-sparkline-title').textContent =
+        `Monthly Trend — ${crimeTypeLabel} (Last 24 Months)`;
+
+    // Ward rank from current filtered data
+    const wardRankIdx = currentWardData.findIndex(([w]) => w === wardName);
+    const wardRank = wardRankIdx >= 0 ? `#${wardRankIdx + 1}` : 'N/A';
+    const totalWards = currentWardData.length;
+
+    // Monthly average over the last 12 months
+    const monthlyAvg = Math.round(last12Months / 12);
 
     const statsContainer = document.getElementById('ward-stats-container');
 
@@ -711,6 +724,11 @@ function showWardDetails(wardName) {
             <div class="value">${last12Months.toLocaleString()}</div>
             <div class="sub-value">Last 12 Months</div>
         </div>
+        <div class="stat-box">
+            <h3>Monthly Avg</h3>
+            <div class="value">${monthlyAvg.toLocaleString()}</div>
+            <div class="sub-value">Per Month</div>
+        </div>
         <div class="stat-box ${trendClass}">
             <h3>3-Month Trend</h3>
             <div class="value">${last3Months.toLocaleString()}</div>
@@ -718,11 +736,20 @@ function showWardDetails(wardName) {
                 ${trendIcon} ${Math.abs(trendPct)}% vs prev.
             </div>
         </div>
+        <div class="stat-box">
+            <h3>Ward Rank</h3>
+            <div class="value">${wardRank}</div>
+            <div class="sub-value">of ${totalWards} wards</div>
+        </div>
     `;
 
     // Render Sparkline (Last 24 months MAX)
     const sparkContainer = document.getElementById('ward-sparkline');
     sparkContainer.innerHTML = '';
+
+    // Remove any previously added year row
+    const existingYearRow = document.querySelector('.spark-year-row');
+    if (existingYearRow) existingYearRow.remove();
 
     // Generate last 24 months keys
     const sparkKeys = [];
@@ -748,6 +775,23 @@ function showWardDetails(wardName) {
         bar.title = `${key}: ${count} crimes`;
         sparkContainer.appendChild(bar);
     });
+
+    // Year labels below sparkline
+    const yearRow = document.createElement('div');
+    yearRow.className = 'spark-year-row';
+    let prevLabelYear = null;
+    sparkKeys.forEach((key, idx) => {
+        const year = key.split('-')[0];
+        if (year !== prevLabelYear) {
+            const label = document.createElement('span');
+            label.className = 'spark-year-label';
+            label.style.left = `${(idx / sparkKeys.length) * 100}%`;
+            label.textContent = year;
+            yearRow.appendChild(label);
+            prevLabelYear = year;
+        }
+    });
+    sparkContainer.insertAdjacentElement('afterend', yearRow);
 
     document.getElementById('ward-details-modal').classList.remove('hidden');
 }

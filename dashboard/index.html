@@ -106,7 +106,10 @@
     <div id="ward-details-modal" class="modal hidden">
         <div class="modal-content details-modal">
             <div class="modal-header">
-                <h2 id="ward-details-title">Ward Details</h2>
+                <div class="modal-header-text">
+                    <h2 id="ward-details-title">Ward Details</h2>
+                    <span id="ward-details-subtitle" class="ward-subtitle"></span>
+                </div>
                 <button class="close-modal-details">&times;</button>
             </div>
             <div class="modal-body">
@@ -114,7 +117,7 @@
                     <!-- Populated by JS -->
                 </div>
                 <div class="ward-chart-section">
-                    <h4>Monthly Trend (Last 24 Months)</h4>
+                    <h4 id="ward-sparkline-title">Monthly Trend (Last 24 Months)</h4>
                     <div id="ward-sparkline" class="sparkline-container"></div>
                 </div>
             </div>
