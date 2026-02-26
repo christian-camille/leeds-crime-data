@@ -199,7 +199,8 @@ leeds-crimes/
 │   ├── test_data_sources.py    # API availability tests
 │   ├── test_boundary.py        # Leeds polygon validation
 │   ├── test_enrichment.py      # Data quality checks
-│   └── test_location.py        # Location validation
+│   ├── test_location.py        # Location validation
+│   └── test_dashboard.py       # Dashboard JSON schema validation
 ├── requirements.txt
 └── README.md
 
@@ -217,10 +218,11 @@ pytest tests/ -v
 
 **Test Categories:**
 
-* `test_data_sources`: Verifies external APIs are accessible and responding.
-* `test_boundary`: Validates that the Leeds polygon geometry is correctly loaded.
-* `test_enrichment`: Checks that data quality thresholds are met (e.g., no null Wards).
-* `test_location`: Samples coordinates to ensure they reside within the target area.
+* `test_data_sources`: Verifies all external APIs are accessible and responding, including the UK Police API, ONS ArcGIS, OSM Nominatim, Postcodes.io (both the reverse-geocode GET and the batch POST endpoint used by the pipeline), and the Leeds Council MapServer.
+* `test_boundary`: Validates that the Leeds polygon geometry is correctly loaded and classifies known locations inside/outside the boundary.
+* `test_enrichment`: Checks that data quality thresholds are met (e.g., < 5% unknown wards, all required columns present, coordinates within Leeds bounds).
+* `test_location`: Samples coordinates to confirm they reside within the Leeds district and validates expected postcodes are present.
+* `test_dashboard`: Validates the schema and referential integrity of `dashboard/data/crime_data.json` — checks all top-level keys, index ranges, coordinate bounds, and data types across every point. Skips gracefully if the pipeline has not been run yet.
 
 ## Data Sources
 
