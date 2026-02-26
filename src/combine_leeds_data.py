@@ -194,5 +194,17 @@ def combine_leeds_data():
     else:
          print("No stop and search data found.")
 
+    print("Cleaning up extracted archive directories...")
+    removed = 0
+    for date in dates:
+        month_dir = os.path.join(base_dir, date)
+        if os.path.isdir(month_dir):
+            try:
+                shutil.rmtree(month_dir)
+                removed += 1
+            except OSError as error:
+                print(f"Warning: Could not remove {month_dir}: {error}")
+    print(f"Removed {removed} extracted archive folder(s).")
+
 if __name__ == "__main__":
     combine_leeds_data()
