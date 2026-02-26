@@ -213,25 +213,18 @@ function getFilterParams() {
         yearStart: startDate.year,
         yearEnd: endDate.year,
         monthStart: startDate.month,
-        monthEnd: endDate.month,
-        excludeCityCentre: document.getElementById('exclude-city-centre').checked
+        monthEnd: endDate.month
     };
 }
 
 function filterPoints(params) {
     const typeIndex = params.crimeType === 'all' ? -1 : crimeData.t.indexOf(params.crimeType);
-    const hraIndex = crimeData.pd ? crimeData.pd.indexOf('HRA') : -1;
 
     return crimeData.p.filter(point => {
-        const [lat, lon, pType, pYear, pMonth, count, isCityCentre, distIdx] = point;
+        const [, , pType, pYear, pMonth] = point;
 
         if (typeIndex !== -1 && pType !== typeIndex) {
             return false;
-        }
-
-        if (params.excludeCityCentre) {
-            if (isCityCentre === 1) return false;
-            if (hraIndex !== -1 && distIdx === hraIndex) return false;
         }
 
         if (pYear < params.yearStart || pYear > params.yearEnd) {
@@ -514,13 +507,13 @@ function updateWardChart(points) {
 
     const totalVisibleCrimes = sortedWards.reduce((sum, item) => sum + item[1], 0);
 
-    const top5Wards = sortedWards.slice(0, 5);
+    const top10Wards = sortedWards.slice(0, 10);
     const maxCount = sortedWards.length > 0 ? sortedWards[0][1] : 1;
 
     const chartContainer = document.getElementById('wards-chart');
     chartContainer.innerHTML = '';
 
-    top5Wards.forEach(([ward, count]) => {
+    top10Wards.forEach(([ward, count]) => {
         const percentage = (count / maxCount) * 100;
 
         const percentageOfTotal = (count / totalVisibleCrimes) * 100;
@@ -543,7 +536,6 @@ function updateWardChart(points) {
 
 function resetFilters() {
     document.getElementById('crime-type').value = 'all';
-    document.getElementById('exclude-city-centre').checked = false;
 
     const slider = document.getElementById('date-slider');
     slider.noUiSlider.set([0, totalMonths - 1]);
@@ -598,7 +590,6 @@ document.getElementById('ward-modal').addEventListener('click', (e) => {
 
 document.getElementById('reset-filters').addEventListener('click', resetFilters);
 document.getElementById('crime-type').addEventListener('change', applyFilters);
-document.getElementById('exclude-city-centre').addEventListener('change', applyFilters);
 const viewHeatmapBtn = document.getElementById('view-heatmap');
 const viewWardsBtn = document.getElementById('view-wards');
 let currentMapMode = 'heatmap';
