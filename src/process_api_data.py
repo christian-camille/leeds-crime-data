@@ -63,8 +63,6 @@ def normalize_raw_data():
     df_raw['Month'] = df_raw['month']
     df_raw['Reported by'] = "West Yorkshire Police"
     df_raw['Falls within'] = "West Yorkshire Police"
-    df_raw['Context'] = df_raw['context']
-    
     category_map = {
         'anti-social-behaviour': 'Anti-social behaviour',
         'burglary': 'Burglary',
@@ -83,9 +81,9 @@ def normalize_raw_data():
     }
     df_raw['Crime type'] = df_raw['category'].map(category_map).fillna(df_raw['category'])
     
-    cols = ['Crime ID', 'Month', 'Reported by', 'Falls within', 
-            'Longitude', 'Latitude', 'Location', 'Crime type', 
-            'Last outcome category', 'Context']
+    cols = ['Crime ID', 'Month', 'Reported by', 'Falls within',
+            'Longitude', 'Latitude', 'Location', 'Crime type',
+            'Last outcome category']
             
     return df_raw[cols].copy()
 
