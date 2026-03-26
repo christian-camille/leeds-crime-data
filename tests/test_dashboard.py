@@ -5,6 +5,7 @@ import pytest
 
 
 DASHBOARD_JSON_PATH = os.path.join("dashboard", "data", "crime_data.json")
+POSTCODE_SEARCH_JSON_PATH = os.path.join("dashboard", "data", "postcode_search.json")
 
 # Leeds coordinate bounds (must match prepare_dashboard_data.py source data)
 LAT_MIN, LAT_MAX = 53.69, 53.96
@@ -21,6 +22,13 @@ P_IS_CITY_CENTRE = 6
 P_DIST_IDX = 7
 P_WARD_IDX = 8
 
+S_LAT = 0
+S_LON = 1
+S_CRIME_TYPE_IDX = 2
+S_YEAR = 3
+S_MONTH = 4
+S_COUNT = 5
+
 
 @pytest.fixture(scope="module")
 def dashboard_data():
@@ -28,6 +36,15 @@ def dashboard_data():
     if not os.path.exists(DASHBOARD_JSON_PATH):
         pytest.skip(f"Dashboard file not found: {DASHBOARD_JSON_PATH} — run the pipeline first")
     with open(DASHBOARD_JSON_PATH, encoding="utf-8") as f:
+        return json.load(f)
+
+
+@pytest.fixture(scope="module")
+def postcode_search_data():
+    """Load and parse the postcode search JSON file, skipping if not present."""
+    if not os.path.exists(POSTCODE_SEARCH_JSON_PATH):
+        pytest.skip(f"Postcode search file not found: {POSTCODE_SEARCH_JSON_PATH} — run the pipeline first")
+    with open(POSTCODE_SEARCH_JSON_PATH, encoding="utf-8") as f:
         return json.load(f)
 
 
@@ -152,3 +169,62 @@ class TestDashboardSchema:
         n_districts = len(dashboard_data['pd'])
         invalid = [pt[P_DIST_IDX] for pt in dashboard_data['p'] if not (0 <= pt[P_DIST_IDX] < n_districts)]
         assert not invalid, f"{len(invalid)} points have out-of-range polling district indices"
+
+
+class TestPostcodeSearchSchema:
+    """Validate the structure and content of postcode_search.json."""
+
+    def test_required_top_level_keys(self, postcode_search_data):
+        required = {'t', 'y', 'r', 'p'}
+        missing = required - set(postcode_search_data.keys())
+        assert not missing, f"Missing top-level keys: {missing}"
+
+    def test_search_crime_types_match_expected_shape(self, postcode_search_data):
+        crime_types = postcode_search_data['t']
+        assert isinstance(crime_types, list), "'t' must be a list"
+        assert len(crime_types) > 0, "'t' must not be empty"
+        assert all(isinstance(ct, str) for ct in crime_types), "All crime types must be strings"
+
+    def test_search_years_non_empty_integers(self, postcode_search_data):
+        years = postcode_search_data['y']
+        assert isinstance(years, list), "'y' must be a list"
+        assert len(years) > 0, "'y' must not be empty"
+        assert all(isinstance(y, int) for y in years), "All years must be integers"
+
+    def test_search_radius_is_100m(self, postcode_search_data):
+        assert postcode_search_data['r'] == 100, "Expected default postcode search radius to be 100m"
+
+    def test_search_points_non_empty(self, postcode_search_data):
+        points = postcode_search_data['p']
+        assert isinstance(points, list), "'p' must be a list"
+        assert len(points) > 0, "'p' must not be empty"
+
+    def test_search_points_have_six_fields(self, postcode_search_data):
+        bad = [i for i, pt in enumerate(postcode_search_data['p']) if len(pt) != 6]
+        assert not bad, f"Search points at indices {bad[:5]} do not have 6 fields"
+
+    def test_search_point_coordinates_in_leeds_bounds(self, postcode_search_data):
+        points = postcode_search_data['p']
+        n = len(points)
+        bad_lat = [pt[S_LAT] for pt in points if not (LAT_MIN <= pt[S_LAT] <= LAT_MAX)]
+        bad_lon = [pt[S_LON] for pt in points if not (LON_MIN <= pt[S_LON] <= LON_MAX)]
+        assert len(bad_lat) / n < 0.01, f"{len(bad_lat)} search points have latitude outside Leeds bounds"
+        assert len(bad_lon) / n < 0.01, f"{len(bad_lon)} search points have longitude outside Leeds bounds"
+
+    def test_search_point_crime_type_indices_valid(self, postcode_search_data):
+        n_types = len(postcode_search_data['t'])
+        invalid = [pt[S_CRIME_TYPE_IDX] for pt in postcode_search_data['p'] if not (0 <= pt[S_CRIME_TYPE_IDX] < n_types)]
+        assert not invalid, f"{len(invalid)} search points have out-of-range crime type indices"
+
+    def test_search_point_years_in_year_list(self, postcode_search_data):
+        valid_years = set(postcode_search_data['y'])
+        invalid = [pt[S_YEAR] for pt in postcode_search_data['p'] if pt[S_YEAR] not in valid_years]
+        assert not invalid, f"{len(invalid)} search points reference years not in 'y': {set(invalid)}"
+
+    def test_search_point_months_in_valid_range(self, postcode_search_data):
+        invalid = [pt[S_MONTH] for pt in postcode_search_data['p'] if not (1 <= pt[S_MONTH] <= 12)]
+        assert not invalid, f"{len(invalid)} search points have month values outside 1–12"
+
+    def test_search_point_counts_positive(self, postcode_search_data):
+        invalid = [pt[S_COUNT] for pt in postcode_search_data['p'] if not (isinstance(pt[S_COUNT], int) and pt[S_COUNT] > 0)]
+        assert not invalid, f"{len(invalid)} search points have non-positive or non-integer counts"

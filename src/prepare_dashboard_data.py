@@ -12,6 +12,7 @@ import os
 GRID_SIZE = 80
 INPUT_PATH = os.path.join("data", "processed", "leeds_street_combined.csv")
 OUTPUT_PATH = os.path.join("dashboard", "data", "crime_data.json")
+SEARCH_OUTPUT_PATH = os.path.join("dashboard", "data", "postcode_search.json")
 CITY_CENTRE_WARD = "Little London & Woodhouse"
 
 
@@ -100,15 +101,44 @@ def prepare_dashboard_data():
         },
         'p': points
     }
+
+    print("Aggregating exact points for postcode radius search...")
+    search_grouped = df_clean.groupby(
+        ['Latitude', 'Longitude', 'Crime type', 'Year', 'MonthNum']
+    ).size().reset_index(name='count')
+
+    search_points = []
+    for _, row in search_grouped.iterrows():
+        search_points.append([
+            round(float(row['Latitude']), 6),
+            round(float(row['Longitude']), 6),
+            crime_type_map[row['Crime type']],
+            int(row['Year']),
+            int(row['MonthNum']),
+            int(row['count'])
+        ])
+
+    search_data = {
+        't': crime_types,
+        'y': [int(y) for y in years],
+        'r': 100,
+        'p': search_points
+    }
     
     os.makedirs(os.path.dirname(OUTPUT_PATH), exist_ok=True)
     
     print(f"Writing to {OUTPUT_PATH}...")
     with open(OUTPUT_PATH, 'w') as f:
         json.dump(output_data, f, separators=(',', ':'))
+
+    print(f"Writing to {SEARCH_OUTPUT_PATH}...")
+    with open(SEARCH_OUTPUT_PATH, 'w') as f:
+        json.dump(search_data, f, separators=(',', ':'))
     
     file_size = os.path.getsize(OUTPUT_PATH) / (1024 * 1024)
-    print(f"Done! File size: {file_size:.2f} MB")
+    search_file_size = os.path.getsize(SEARCH_OUTPUT_PATH) / (1024 * 1024)
+    print(f"Done! Heatmap file size: {file_size:.2f} MB")
+    print(f"Done! Search file size: {search_file_size:.2f} MB")
 
 
 if __name__ == "__main__":

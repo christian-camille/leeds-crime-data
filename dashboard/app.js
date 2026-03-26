@@ -1,6 +1,18 @@
 let map;
 let heatLayer;
 let crimeData = null;
+let searchData = null;
+let searchCircle = null;
+let searchMarker = null;
+let activeSearchState = null;
+
+const SEARCH_RADIUS_METERS = 100;
+const LEEDS_BOUNDS = {
+    latMin: 53.69,
+    latMax: 53.96,
+    lonMin: -1.80,
+    lonMax: -1.29
+};
 
 const MONTHS = [
     'January', 'February', 'March', 'April', 'May', 'June',
@@ -55,6 +67,18 @@ async function init() {
             '/dashboard/data/crime_data.json'
         ]);
 
+        try {
+            searchData = await fetchJsonFromCandidates([
+                'data/postcode_search.json',
+                './data/postcode_search.json',
+                '/dashboard/data/postcode_search.json'
+            ]);
+        } catch (searchError) {
+            console.warn('Failed to load postcode search data:', searchError);
+            setSearchControlsEnabled(false);
+            setSearchStatus('Postcode search is unavailable until postcode_search.json is generated.', 'warning');
+        }
+
         loadWardBoundaries();
 
         const locationCounts = {};
@@ -101,6 +125,258 @@ function populateFilters() {
 
     initSlider();
     initIntensitySlider();
+}
+
+function setSearchControlsEnabled(enabled) {
+    document.getElementById('postcode-search').disabled = !enabled;
+    document.getElementById('postcode-search-btn').disabled = !enabled;
+    document.getElementById('clear-postcode-search').disabled = !enabled;
+}
+
+function setSearchStatus(message, type = 'info') {
+    const status = document.getElementById('postcode-search-status');
+    if (!message) {
+        status.textContent = '';
+        status.className = 'search-status hidden';
+        return;
+    }
+
+    status.textContent = message;
+    status.className = `search-status ${type}`;
+}
+
+function normalizePostcode(value) {
+    return value.trim().toUpperCase().replace(/\s+/g, ' ');
+}
+
+function isWithinLeedsBounds(lat, lon) {
+    return lat >= LEEDS_BOUNDS.latMin && lat <= LEEDS_BOUNDS.latMax && lon >= LEEDS_BOUNDS.lonMin && lon <= LEEDS_BOUNDS.lonMax;
+}
+
+function haversineDistanceMeters(lat1, lon1, lat2, lon2) {
+    const toRadians = (degrees) => (degrees * Math.PI) / 180;
+    const earthRadius = 6371000;
+    const dLat = toRadians(lat2 - lat1);
+    const dLon = toRadians(lon2 - lon1);
+    const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(toRadians(lat1)) * Math.cos(toRadians(lat2)) *
+        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+
+    return 2 * earthRadius * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function buildSearchCandidates(lat, lon) {
+    if (!searchData) {
+        return [];
+    }
+
+    const latDelta = SEARCH_RADIUS_METERS / 111320;
+    const lonDelta = SEARCH_RADIUS_METERS / (111320 * Math.cos((lat * Math.PI) / 180));
+
+    return searchData.p.filter((point) => {
+        const [pointLat, pointLon] = point;
+        if (Math.abs(pointLat - lat) > latDelta || Math.abs(pointLon - lon) > lonDelta) {
+            return false;
+        }
+
+        return haversineDistanceMeters(lat, lon, pointLat, pointLon) <= SEARCH_RADIUS_METERS;
+    });
+}
+
+function filterSearchCandidates(candidates, params) {
+    if (!searchData) {
+        return [];
+    }
+
+    const typeIndex = params.crimeType === 'all' ? -1 : searchData.t.indexOf(params.crimeType);
+
+    return candidates.filter((point) => {
+        const [, , pointType, pointYear, pointMonth] = point;
+
+        if (typeIndex !== -1 && pointType !== typeIndex) {
+            return false;
+        }
+
+        if (pointYear < params.yearStart || pointYear > params.yearEnd) {
+            return false;
+        }
+
+        if (pointYear === params.yearStart && pointMonth < params.monthStart) {
+            return false;
+        }
+
+        if (pointYear === params.yearEnd && pointMonth > params.monthEnd) {
+            return false;
+        }
+
+        return true;
+    });
+}
+
+function renderSearchResults(filteredCandidates) {
+    if (!activeSearchState) {
+        return;
+    }
+
+    const resultsPanel = document.getElementById('postcode-results');
+    const breakdownContainer = document.getElementById('postcode-breakdown');
+    const totalCrimes = filteredCandidates.reduce((sum, point) => sum + point[5], 0);
+    const countsByType = {};
+
+    filteredCandidates.forEach((point) => {
+        const typeName = searchData.t[point[2]];
+        countsByType[typeName] = (countsByType[typeName] || 0) + point[5];
+    });
+
+    const sortedTypes = Object.entries(countsByType).sort((a, b) => b[1] - a[1]);
+    const topCrime = sortedTypes[0];
+
+    document.getElementById('postcode-results-title').textContent = activeSearchState.postcode;
+    document.getElementById('postcode-results-context').textContent = `${activeSearchState.ward} • ${activeSearchState.district}`;
+    document.getElementById('postcode-total-crimes').textContent = totalCrimes.toLocaleString();
+    document.getElementById('postcode-top-crime').textContent = topCrime ? topCrime[0] : 'No crimes';
+    document.getElementById('postcode-top-crime-share').textContent = topCrime
+        ? `${((topCrime[1] / Math.max(totalCrimes, 1)) * 100).toFixed(1)}% of local total`
+        : 'No matching crimes for current filters';
+
+    breakdownContainer.innerHTML = '';
+
+    if (!sortedTypes.length) {
+        const emptyState = document.createElement('p');
+        emptyState.className = 'search-empty';
+        emptyState.textContent = 'No crimes matched the current filters inside this 100m radius.';
+        breakdownContainer.appendChild(emptyState);
+    } else {
+        const maxCount = sortedTypes[0][1];
+        sortedTypes.forEach(([typeName, count]) => {
+            const row = document.createElement('div');
+            row.className = 'search-breakdown-row';
+            row.innerHTML = `
+                <span class="search-breakdown-label" title="${typeName}">${typeName}</span>
+                <div class="search-breakdown-bar"><div class="search-breakdown-fill" style="width: ${(count / maxCount) * 100}%"></div></div>
+                <span class="search-breakdown-value">${count.toLocaleString()}</span>
+            `;
+            breakdownContainer.appendChild(row);
+        });
+    }
+
+    resultsPanel.classList.remove('hidden');
+}
+
+function renderSearchOverlay(lat, lon) {
+    if (currentMapMode !== 'search') {
+        return;
+    }
+
+    if (searchMarker) {
+        map.removeLayer(searchMarker);
+    }
+
+    if (searchCircle) {
+        map.removeLayer(searchCircle);
+    }
+
+    searchMarker = L.circleMarker([lat, lon], {
+        radius: 7,
+        color: '#f0f0f5',
+        weight: 2,
+        fillColor: '#22c55e',
+        fillOpacity: 1
+    }).addTo(map);
+
+    searchCircle = L.circle([lat, lon], {
+        radius: SEARCH_RADIUS_METERS,
+        color: '#22c55e',
+        weight: 2,
+        fillColor: '#22c55e',
+        fillOpacity: 0.12
+    }).addTo(map);
+
+    map.flyTo([lat, lon], Math.max(map.getZoom(), 15), { duration: 0.6 });
+}
+
+function updateActiveSearchResults(params = getSearchFilterParams()) {
+    if (!activeSearchState) {
+        return;
+    }
+
+    const filteredCandidates = filterSearchCandidates(activeSearchState.candidates, params);
+
+    if (currentMapMode === 'search') {
+        renderSearchResults(filteredCandidates);
+    }
+}
+
+function clearPostcodeSearch() {
+    activeSearchState = null;
+    document.getElementById('postcode-search').value = '';
+    document.getElementById('postcode-results').classList.add('hidden');
+    setSearchStatus('', 'info');
+
+    if (searchMarker) {
+        map.removeLayer(searchMarker);
+        searchMarker = null;
+    }
+
+    if (searchCircle) {
+        map.removeLayer(searchCircle);
+        searchCircle = null;
+    }
+}
+
+async function runPostcodeSearch() {
+    if (!searchData) {
+        setSearchStatus('Postcode search data is not available yet.', 'warning');
+        return;
+    }
+
+    const button = document.getElementById('postcode-search-btn');
+    const input = document.getElementById('postcode-search');
+    const rawPostcode = normalizePostcode(input.value);
+
+    if (!rawPostcode) {
+        setSearchStatus('Enter a Leeds postcode to search.', 'warning');
+        return;
+    }
+
+    button.disabled = true;
+    setSearchStatus('Looking up postcode...', 'info');
+
+    try {
+        const response = await fetch(`https://api.postcodes.io/postcodes/${encodeURIComponent(rawPostcode)}`);
+        const payload = await response.json();
+
+        if (!response.ok || payload.status !== 200 || !payload.result) {
+            throw new Error('Postcode not found.');
+        }
+
+        const { latitude, longitude, admin_ward: adminWard, admin_district: adminDistrict, postcode } = payload.result;
+
+        if (!isWithinLeedsBounds(latitude, longitude) || !String(adminDistrict || '').includes('Leeds')) {
+            throw new Error('That postcode is outside the Leeds search area.');
+        }
+
+        const candidates = buildSearchCandidates(latitude, longitude);
+        activeSearchState = {
+            postcode,
+            ward: adminWard || 'Unknown ward',
+            district: adminDistrict || 'Unknown district',
+            lat: latitude,
+            lon: longitude,
+            candidates
+        };
+
+        renderSearchOverlay(latitude, longitude);
+        updateActiveSearchResults();
+        setSearchStatus(`Showing local crimes within ${SEARCH_RADIUS_METERS}m of ${postcode}.`, 'success');
+    } catch (error) {
+        activeSearchState = null;
+        document.getElementById('postcode-results').classList.add('hidden');
+        setSearchStatus(error.message || 'Postcode lookup failed.', 'error');
+    } finally {
+        button.disabled = false;
+    }
 }
 
 function initIntensitySlider() {
@@ -217,6 +493,20 @@ function getFilterParams() {
     };
 }
 
+function getSearchFilterParams() {
+    if (currentMapMode !== 'search') {
+        return getFilterParams();
+    }
+
+    return {
+        crimeType: document.getElementById('crime-type').value,
+        yearStart: crimeData.y[0],
+        yearEnd: maxAvailableDate.year,
+        monthStart: 1,
+        monthEnd: maxAvailableDate.month
+    };
+}
+
 function filterPoints(params) {
     const typeIndex = params.crimeType === 'all' ? -1 : crimeData.t.indexOf(params.crimeType);
 
@@ -309,13 +599,20 @@ function applyFilters() {
                 1.0: '#f0f921'
             }
         }).addTo(map);
-    } else {
+    } else if (currentMapMode === 'wards') {
         if (heatLayer) map.removeLayer(heatLayer);
         updateChoropleth(filteredPoints);
+    } else {
+        if (heatLayer) map.removeLayer(heatLayer);
+        if (geoJsonLayer) map.removeLayer(geoJsonLayer);
     }
 
-    updateStats(filteredPoints, params);
-    updateWardChart(filteredPoints);
+    if (currentMapMode !== 'search') {
+        updateStats(filteredPoints, params);
+        updateWardChart(filteredPoints);
+    }
+
+    updateActiveSearchResults(getSearchFilterParams());
 }
 
 let wardGeoJsonData = null;
@@ -590,36 +887,89 @@ document.getElementById('ward-modal').addEventListener('click', (e) => {
 
 document.getElementById('reset-filters').addEventListener('click', resetFilters);
 document.getElementById('crime-type').addEventListener('change', applyFilters);
+document.getElementById('postcode-search-btn').addEventListener('click', runPostcodeSearch);
+document.getElementById('clear-postcode-search').addEventListener('click', clearPostcodeSearch);
+document.getElementById('postcode-search').addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') {
+        event.preventDefault();
+        runPostcodeSearch();
+    }
+});
 const viewHeatmapBtn = document.getElementById('view-heatmap');
 const viewWardsBtn = document.getElementById('view-wards');
+const viewSearchBtn = document.getElementById('view-search');
 let currentMapMode = 'heatmap';
 
 viewHeatmapBtn.addEventListener('click', () => setMapMode('heatmap'));
 viewWardsBtn.addEventListener('click', () => setMapMode('wards'));
+viewSearchBtn.addEventListener('click', () => setMapMode('search'));
 
 function setMapMode(mode) {
     if (currentMapMode === mode) return;
     currentMapMode = mode;
 
-    const intensityControl = document.getElementById('intensity-slider').parentElement;
+    const dateRangeGroup = document.getElementById('date-range-group');
+    const intensityGroup = document.getElementById('intensity-group');
+    const searchGroup = document.getElementById('search-group');
+    const statsPanel = document.getElementById('stats-panel');
+    const chartPanel = document.getElementById('chart-panel');
+
+    if (searchMarker) {
+        map.removeLayer(searchMarker);
+        searchMarker = null;
+    }
+
+    if (searchCircle) {
+        map.removeLayer(searchCircle);
+        searchCircle = null;
+    }
 
     if (mode === 'heatmap') {
         viewHeatmapBtn.classList.add('active');
         viewWardsBtn.classList.remove('active');
+        viewSearchBtn.classList.remove('active');
         if (geoJsonLayer) map.removeLayer(geoJsonLayer);
-        intensityControl.style.display = 'block';
+        dateRangeGroup.classList.remove('hidden');
+        intensityGroup.classList.remove('hidden');
+        searchGroup.classList.add('hidden');
+        statsPanel.classList.remove('hidden');
+        chartPanel.classList.remove('hidden');
         if (window.infoControlAdded) {
             info.remove();
             window.infoControlAdded = false;
         }
-    } else {
+    } else if (mode === 'wards') {
         viewWardsBtn.classList.add('active');
         viewHeatmapBtn.classList.remove('active');
+        viewSearchBtn.classList.remove('active');
         if (heatLayer) map.removeLayer(heatLayer);
-        intensityControl.style.display = 'none';
+        dateRangeGroup.classList.remove('hidden');
+        intensityGroup.classList.add('hidden');
+        searchGroup.classList.add('hidden');
+        statsPanel.classList.remove('hidden');
+        chartPanel.classList.remove('hidden');
         if (!window.infoControlAdded) {
             info.addTo(map);
             window.infoControlAdded = true;
+        }
+    } else {
+        viewSearchBtn.classList.add('active');
+        viewHeatmapBtn.classList.remove('active');
+        viewWardsBtn.classList.remove('active');
+        dateRangeGroup.classList.add('hidden');
+        intensityGroup.classList.add('hidden');
+        searchGroup.classList.remove('hidden');
+        statsPanel.classList.add('hidden');
+        chartPanel.classList.add('hidden');
+        if (heatLayer) map.removeLayer(heatLayer);
+        if (geoJsonLayer) map.removeLayer(geoJsonLayer);
+        if (window.infoControlAdded) {
+            info.remove();
+            window.infoControlAdded = false;
+        }
+        if (activeSearchState) {
+            renderSearchOverlay(activeSearchState.lat, activeSearchState.lon);
+            updateActiveSearchResults(getSearchFilterParams());
         }
     }
 

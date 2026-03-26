@@ -25,7 +25,7 @@
             </header>
 
             <div class="controls">
-                <div class="control-group">
+                <div class="control-group" id="crime-type-group">
                     <label for="crime-type">Crime Type</label>
                     <select id="crime-type">
                         <option value="all">All Crimes</option>
@@ -37,23 +37,59 @@
                     <div class="toggle-buttons">
                         <button id="view-heatmap" class="view-btn active">Heatmap</button>
                         <button id="view-wards" class="view-btn">Wards</button>
+                        <button id="view-search" class="view-btn">Search</button>
                     </div>
                 </div>
 
-                <div class="control-group">
+                <div class="control-group" id="date-range-group">
                     <label>Date Range</label>
                     <div id="date-slider" class="range-slider"></div>
                 </div>
 
-                <div class="control-group">
+                <div class="control-group" id="intensity-group">
                     <label>Intensity / Sensitivity</label>
                     <div id="intensity-slider" class="range-slider"></div>
+                </div>
+
+                <div class="control-group search-group hidden" id="search-group">
+                    <label for="postcode-search">Local Area Search</label>
+                    <div class="search-input-row">
+                        <input id="postcode-search" type="text" placeholder="Enter Leeds postcode" autocomplete="postal-code">
+                        <button id="postcode-search-btn" class="btn-primary search-btn" type="button">Search</button>
+                    </div>
+                    <p class="control-help">Aggregated crimes within a 100m radius of the postcode.</p>
+                    <p id="postcode-search-status" class="search-status hidden" aria-live="polite"></p>
+                    <div id="postcode-results" class="search-results hidden">
+                        <div class="search-results-header">
+                            <div>
+                                <h3 id="postcode-results-title">Postcode</h3>
+                                <p id="postcode-results-context">Ward and district</p>
+                            </div>
+                            <button id="clear-postcode-search" class="btn-link" type="button">Clear</button>
+                        </div>
+                        <div class="search-summary-grid">
+                            <div class="stat-box compact-stat-box">
+                                <h3>Total Crimes</h3>
+                                <div class="value" id="postcode-total-crimes">0</div>
+                                <div class="sub-value">Selected filters, 100m radius</div>
+                            </div>
+                            <div class="stat-box compact-stat-box">
+                                <h3>Top Crime Type</h3>
+                                <div class="value compact-value" id="postcode-top-crime">-</div>
+                                <div class="sub-value" id="postcode-top-crime-share">-</div>
+                            </div>
+                        </div>
+                        <div class="search-breakdown-section">
+                            <h4>Crime Breakdown</h4>
+                            <div id="postcode-breakdown"></div>
+                        </div>
+                    </div>
                 </div>
 
                 <button id="reset-filters" class="btn-secondary">Reset</button>
             </div>
 
-            <div class="stats-panel">
+            <div class="stats-panel" id="stats-panel">
                 <div class="stat">
                     <span class="stat-value" id="total-crimes">-</span>
                     <span class="stat-label">Total Crimes</span>
@@ -64,7 +100,7 @@
                 </div>
             </div>
 
-            <div class="chart-panel">
+            <div class="chart-panel" id="chart-panel">
                 <div id="wards-chart"></div>
                 <button id="show-all-wards" class="btn-link">Show All</button>
             </div>
@@ -127,7 +163,7 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.7.1/nouislider.min.js"></script>
-    <script src="app.js"></script>
+    <script src="app.js?v=3"></script>
 </body>
 
 </html>

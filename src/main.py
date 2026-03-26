@@ -175,7 +175,7 @@ PIPELINE_STEPS = [
     {
         "num": 8,
         "name": "Prepare Dashboard Data",
-        "desc": "Aggregates enriched data into optimized JSON for the dashboard",
+        "desc": "Aggregates enriched data into optimized JSON for the dashboard and postcode search",
         "func": prepare_dashboard_data,
         "args": ()
     }
