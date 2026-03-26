@@ -15,6 +15,7 @@ A comprehensive geospatial intelligence platform for the Leeds metropolitan area
 ## Project Highlights
 
 - **Interactive Dashboard**: A responsive web application featuring dual-mode visualisation (Heatmap & Ward Choropleth), dynamic filtering, and real-time statistics.
+- **Postcode Radius Search**: Static postcode lookup that shows aggregated local crime totals and crime-type breakdowns within a 100m radius.
 - **Robust ETL Pipeline**: Automated ingestion system that handles incremental updates, rate limiting, and historical data merging.
 - **Geospatial Intelligence**: Precise point-in-polygon validation (`Shapely`) and batch geocoding (`postcodes.io`) to enrich every crime record with administrative boundaries.
 - **Data Normalisation**: Unified schema across disparate sources (API vs Archive) to ensure consistent categorisation and analysis.
@@ -159,6 +160,7 @@ The dashboard is the centrepiece of this project, offering a high-performance in
 * **Category Filtering**: Isolate specific crime types (e.g., "Burglary").
 * **Choropleth Map**: Toggle between heatmap and ward-level density views.
 * **Ward Breakdown**: Top 5 wards by crime count for the selected period.
+* **Postcode Search**: Search a Leeds postcode and see aggregated crimes within 100m, with a type breakdown and map overlay.
 
 ### Running the Dashboard
 
@@ -237,6 +239,15 @@ pytest tests/ -v
 The pipeline produces two primary artifacts:
 1. **`data/processed/leeds_street_combined.csv`**: The master dataset containing **1,000,000+ records** (covering **Jan 2017 to Dec 2025**) with 100% Ward/Postcode coverage, ideal for deep analysis (EDA) or ML modelling.
 2. **`dashboard/data/crime_data.json`**: An optimised, minified structure containing pre-aggregated indices and spatial coordinates, powering the real-time web dashboard.
+3. **`dashboard/data/postcode_search.json`**: A compact search dataset containing exact aggregated crime points for postcode-radius lookups in the static dashboard.
+
+## Postcode Search Notes
+
+The postcode search stays compatible with static hosting. The browser looks up the entered postcode via **postcodes.io**, then filters the local `postcode_search.json` dataset client-side to compute crimes within a **100m radius**.
+
+- Results are **aggregated only**: total crimes plus a crime-type breakdown for the active dashboard filters.
+- The search currently supports **Leeds postcodes only**.
+- The feature depends on `postcodes.io` being reachable from the browser.
 
 ## License
 
