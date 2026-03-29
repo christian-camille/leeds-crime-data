@@ -57,7 +57,19 @@
                         <input id="postcode-search" type="text" placeholder="Enter Leeds postcode" autocomplete="postal-code">
                         <button id="postcode-search-btn" class="btn-primary search-btn" type="button">Search</button>
                     </div>
-                    <p class="control-help">Aggregated crimes within a 100m radius of the postcode.</p>
+                    <div class="radius-slider-row">
+                        <div class="radius-slider-header">
+                            <span class="radius-label">Search Radius</span>
+                            <span class="radius-value" id="radius-value">100m</span>
+                        </div>
+                        <input id="search-radius" type="range" min="100" max="1000" step="100" value="100" class="radius-range">
+                        <div class="radius-ticks">
+                            <span>100m</span>
+                            <span>500m</span>
+                            <span>1km</span>
+                        </div>
+                    </div>
+                    <p class="control-help" id="search-help-text">Aggregated crimes within a 100m radius of the postcode.</p>
                     <p id="postcode-search-status" class="search-status hidden" aria-live="polite"></p>
                     <div id="postcode-results" class="search-results hidden">
                         <div class="search-results-header">
@@ -71,7 +83,7 @@
                             <div class="stat-box compact-stat-box">
                                 <h3>Total Crimes</h3>
                                 <div class="value" id="postcode-total-crimes">0</div>
-                                <div class="sub-value">Selected filters, 100m radius</div>
+                                <div class="sub-value" id="postcode-radius-label">Selected filters, 100m radius</div>
                             </div>
                             <div class="stat-box compact-stat-box">
                                 <h3>Top Crime Type</h3>

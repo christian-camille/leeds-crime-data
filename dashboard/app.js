@@ -7,6 +7,37 @@ let searchMarker = null;
 let activeSearchState = null;
 
 const SEARCH_RADIUS_METERS = 100;
+const SEARCH_RADIUS_MIN = 100;
+const SEARCH_RADIUS_MAX = 1000;
+
+function getSearchRadius() {
+    const slider = document.getElementById('search-radius');
+    return slider ? Number(slider.value) : SEARCH_RADIUS_METERS;
+}
+
+function formatRadius(meters) {
+    return meters >= 1000 ? `${meters / 1000}km` : `${meters}m`;
+}
+
+function updateRadiusUI() {
+    const radius = getSearchRadius();
+    document.getElementById('radius-value').textContent = formatRadius(radius);
+    document.getElementById('search-help-text').textContent =
+        `Aggregated crimes within a ${formatRadius(radius)} radius of the postcode.`;
+    document.getElementById('postcode-radius-label').textContent =
+        `Selected filters, ${formatRadius(radius)} radius`;
+}
+
+function onRadiusChange() {
+    updateRadiusUI();
+    if (activeSearchState) {
+        activeSearchState.candidates = buildSearchCandidates(activeSearchState.lat, activeSearchState.lon);
+        renderSearchOverlay(activeSearchState.lat, activeSearchState.lon);
+        updateActiveSearchResults();
+        setSearchStatus(`Showing local crimes within ${formatRadius(getSearchRadius())} of ${activeSearchState.postcode}.`, 'success');
+    }
+}
+
 const LEEDS_BOUNDS = {
     latMin: 53.69,
     latMax: 53.96,
@@ -171,8 +202,9 @@ function buildSearchCandidates(lat, lon) {
         return [];
     }
 
-    const latDelta = SEARCH_RADIUS_METERS / 111320;
-    const lonDelta = SEARCH_RADIUS_METERS / (111320 * Math.cos((lat * Math.PI) / 180));
+    const radius = getSearchRadius();
+    const latDelta = radius / 111320;
+    const lonDelta = radius / (111320 * Math.cos((lat * Math.PI) / 180));
 
     return searchData.p.filter((point) => {
         const [pointLat, pointLon] = point;
@@ -180,7 +212,7 @@ function buildSearchCandidates(lat, lon) {
             return false;
         }
 
-        return haversineDistanceMeters(lat, lon, pointLat, pointLon) <= SEARCH_RADIUS_METERS;
+        return haversineDistanceMeters(lat, lon, pointLat, pointLon) <= radius;
     });
 }
 
@@ -245,7 +277,7 @@ function renderSearchResults(filteredCandidates) {
     if (!sortedTypes.length) {
         const emptyState = document.createElement('p');
         emptyState.className = 'search-empty';
-        emptyState.textContent = 'No crimes matched the current filters inside this 100m radius.';
+        emptyState.textContent = `No crimes matched the current filters inside this ${formatRadius(getSearchRadius())} radius.`;
         breakdownContainer.appendChild(emptyState);
     } else {
         const maxCount = sortedTypes[0][1];
@@ -286,14 +318,15 @@ function renderSearchOverlay(lat, lon) {
     }).addTo(map);
 
     searchCircle = L.circle([lat, lon], {
-        radius: SEARCH_RADIUS_METERS,
+        radius: getSearchRadius(),
         color: '#22c55e',
         weight: 2,
         fillColor: '#22c55e',
         fillOpacity: 0.12
     }).addTo(map);
 
-    map.flyTo([lat, lon], Math.max(map.getZoom(), 15), { duration: 0.6 });
+    const zoomLevel = getSearchRadius() <= 250 ? 16 : getSearchRadius() <= 500 ? 15 : 14;
+    map.flyTo([lat, lon], Math.max(map.getZoom(), zoomLevel), { duration: 0.6 });
 }
 
 function updateActiveSearchResults(params = getSearchFilterParams()) {
@@ -369,7 +402,7 @@ async function runPostcodeSearch() {
 
         renderSearchOverlay(latitude, longitude);
         updateActiveSearchResults();
-        setSearchStatus(`Showing local crimes within ${SEARCH_RADIUS_METERS}m of ${postcode}.`, 'success');
+        setSearchStatus(`Showing local crimes within ${formatRadius(getSearchRadius())} of ${postcode}.`, 'success');
     } catch (error) {
         activeSearchState = null;
         document.getElementById('postcode-results').classList.add('hidden');
@@ -889,6 +922,7 @@ document.getElementById('reset-filters').addEventListener('click', resetFilters)
 document.getElementById('crime-type').addEventListener('change', applyFilters);
 document.getElementById('postcode-search-btn').addEventListener('click', runPostcodeSearch);
 document.getElementById('clear-postcode-search').addEventListener('click', clearPostcodeSearch);
+document.getElementById('search-radius').addEventListener('input', onRadiusChange);
 document.getElementById('postcode-search').addEventListener('keydown', (event) => {
     if (event.key === 'Enter') {
         event.preventDefault();
