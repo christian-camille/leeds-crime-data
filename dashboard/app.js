@@ -527,17 +527,7 @@ function getFilterParams() {
 }
 
 function getSearchFilterParams() {
-    if (currentMapMode !== 'search') {
-        return getFilterParams();
-    }
-
-    return {
-        crimeType: document.getElementById('crime-type').value,
-        yearStart: crimeData.y[0],
-        yearEnd: maxAvailableDate.year,
-        monthStart: 1,
-        monthEnd: maxAvailableDate.month
-    };
+    return getFilterParams();
 }
 
 function filterPoints(params) {
@@ -990,7 +980,7 @@ function setMapMode(mode) {
         viewSearchBtn.classList.add('active');
         viewHeatmapBtn.classList.remove('active');
         viewWardsBtn.classList.remove('active');
-        dateRangeGroup.classList.add('hidden');
+        dateRangeGroup.classList.remove('hidden');
         intensityGroup.classList.add('hidden');
         searchGroup.classList.remove('hidden');
         statsPanel.classList.add('hidden');
