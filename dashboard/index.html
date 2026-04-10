@@ -33,11 +33,12 @@
                 </div>
 
                 <div class="control-group">
-                    <label>Map View</label>
+                    <label>View</label>
                     <div class="toggle-buttons">
                         <button id="view-heatmap" class="view-btn active">Heatmap</button>
                         <button id="view-wards" class="view-btn">Wards</button>
                         <button id="view-search" class="view-btn">Search</button>
+                        <button id="view-analytics" class="view-btn">Analytics</button>
                     </div>
                 </div>
 
@@ -133,6 +134,13 @@
 
         <main class="map-container">
             <div id="map"></div>
+            <section id="analytics-view" class="analytics-placeholder hidden" aria-live="polite">
+                <div class="analytics-placeholder-card">
+                    <span class="analytics-placeholder-kicker">Analytics Workbench</span>
+                    <h2>Map-free exploration is now wired in</h2>
+                    <p>This is the first checkpoint. The dashboard can now switch away from the map, and the chart, comparison, and table views will be layered into this workspace next.</p>
+                </div>
+            </section>
             <div class="loading-overlay" id="loading">
                 <div class="spinner"></div>
                 <p>Loading crime data...</p>

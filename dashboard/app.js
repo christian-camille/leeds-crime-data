@@ -922,11 +922,13 @@ document.getElementById('postcode-search').addEventListener('keydown', (event) =
 const viewHeatmapBtn = document.getElementById('view-heatmap');
 const viewWardsBtn = document.getElementById('view-wards');
 const viewSearchBtn = document.getElementById('view-search');
+const viewAnalyticsBtn = document.getElementById('view-analytics');
 let currentMapMode = 'heatmap';
 
 viewHeatmapBtn.addEventListener('click', () => setMapMode('heatmap'));
 viewWardsBtn.addEventListener('click', () => setMapMode('wards'));
 viewSearchBtn.addEventListener('click', () => setMapMode('search'));
+viewAnalyticsBtn.addEventListener('click', () => setMapMode('analytics'));
 
 function setMapMode(mode) {
     if (currentMapMode === mode) return;
@@ -937,6 +939,16 @@ function setMapMode(mode) {
     const searchGroup = document.getElementById('search-group');
     const statsPanel = document.getElementById('stats-panel');
     const chartPanel = document.getElementById('chart-panel');
+    const mapElement = document.getElementById('map');
+    const analyticsView = document.getElementById('analytics-view');
+
+    viewHeatmapBtn.classList.toggle('active', mode === 'heatmap');
+    viewWardsBtn.classList.toggle('active', mode === 'wards');
+    viewSearchBtn.classList.toggle('active', mode === 'search');
+    viewAnalyticsBtn.classList.toggle('active', mode === 'analytics');
+
+    mapElement.classList.toggle('hidden', mode === 'analytics');
+    analyticsView.classList.toggle('hidden', mode !== 'analytics');
 
     if (searchMarker) {
         map.removeLayer(searchMarker);
@@ -949,9 +961,6 @@ function setMapMode(mode) {
     }
 
     if (mode === 'heatmap') {
-        viewHeatmapBtn.classList.add('active');
-        viewWardsBtn.classList.remove('active');
-        viewSearchBtn.classList.remove('active');
         if (geoJsonLayer) map.removeLayer(geoJsonLayer);
         dateRangeGroup.classList.remove('hidden');
         intensityGroup.classList.remove('hidden');
@@ -963,9 +972,6 @@ function setMapMode(mode) {
             window.infoControlAdded = false;
         }
     } else if (mode === 'wards') {
-        viewWardsBtn.classList.add('active');
-        viewHeatmapBtn.classList.remove('active');
-        viewSearchBtn.classList.remove('active');
         if (heatLayer) map.removeLayer(heatLayer);
         dateRangeGroup.classList.remove('hidden');
         intensityGroup.classList.add('hidden');
@@ -976,10 +982,7 @@ function setMapMode(mode) {
             info.addTo(map);
             window.infoControlAdded = true;
         }
-    } else {
-        viewSearchBtn.classList.add('active');
-        viewHeatmapBtn.classList.remove('active');
-        viewWardsBtn.classList.remove('active');
+    } else if (mode === 'search') {
         dateRangeGroup.classList.remove('hidden');
         intensityGroup.classList.add('hidden');
         searchGroup.classList.remove('hidden');
@@ -995,9 +998,25 @@ function setMapMode(mode) {
             renderSearchOverlay(activeSearchState.lat, activeSearchState.lon);
             updateActiveSearchResults(getSearchFilterParams());
         }
+    } else {
+        dateRangeGroup.classList.remove('hidden');
+        intensityGroup.classList.add('hidden');
+        searchGroup.classList.add('hidden');
+        statsPanel.classList.remove('hidden');
+        chartPanel.classList.remove('hidden');
+        if (heatLayer) map.removeLayer(heatLayer);
+        if (geoJsonLayer) map.removeLayer(geoJsonLayer);
+        if (window.infoControlAdded) {
+            info.remove();
+            window.infoControlAdded = false;
+        }
     }
 
     applyFilters();
+
+    if (mode !== 'analytics') {
+        requestAnimationFrame(() => map.invalidateSize());
+    }
 }
 
 

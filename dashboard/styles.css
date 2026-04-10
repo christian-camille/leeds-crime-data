@@ -569,6 +569,55 @@ input[type="text"]:focus {
     height: 100%;
 }
 
+.analytics-placeholder {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 32px;
+    background:
+        radial-gradient(circle at top left, rgba(99, 102, 241, 0.16), transparent 32%),
+        radial-gradient(circle at bottom right, rgba(234, 179, 8, 0.14), transparent 28%),
+        linear-gradient(160deg, rgba(16, 16, 24, 0.96), rgba(10, 10, 16, 0.98));
+}
+
+.analytics-placeholder-card {
+    width: min(620px, 100%);
+    padding: 32px;
+    border: 1px solid var(--border-color);
+    border-radius: 24px;
+    background: rgba(17, 17, 26, 0.88);
+    box-shadow: var(--shadow);
+    backdrop-filter: blur(14px);
+}
+
+.analytics-placeholder-kicker {
+    display: inline-flex;
+    margin-bottom: 14px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: rgba(99, 102, 241, 0.14);
+    color: #c7d2fe;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.analytics-placeholder-card h2 {
+    font-size: clamp(1.8rem, 2.5vw, 2.6rem);
+    line-height: 1.05;
+    letter-spacing: -0.04em;
+    margin-bottom: 14px;
+}
+
+.analytics-placeholder-card p {
+    max-width: 52ch;
+    color: var(--text-secondary);
+    font-size: 1rem;
+}
+
 .loading-overlay {
     position: absolute;
     inset: 0;
@@ -847,6 +896,15 @@ input[type="text"]:focus {
     .search-breakdown-row {
         grid-template-columns: 1fr;
         gap: 4px;
+    }
+
+    .analytics-placeholder {
+        padding: 20px;
+    }
+
+    .analytics-placeholder-card {
+        padding: 24px;
+        border-radius: 20px;
     }
 }
 
