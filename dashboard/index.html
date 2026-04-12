@@ -134,11 +134,148 @@
 
         <main class="map-container">
             <div id="map"></div>
-            <section id="analytics-view" class="analytics-placeholder hidden" aria-live="polite">
-                <div class="analytics-placeholder-card">
-                    <span class="analytics-placeholder-kicker">Analytics Workbench</span>
-                    <h2>Map-free exploration is now wired in</h2>
-                    <p>This is the first checkpoint. The dashboard can now switch away from the map, and the chart, comparison, and table views will be layered into this workspace next.</p>
+            <section id="analytics-view" class="analytics-workbench hidden" aria-live="polite">
+                <div class="analytics-shell">
+                    <header class="analytics-hero analytics-panel">
+                        <div>
+                            <span class="analytics-kicker">Analytics Workbench</span>
+                            <h2>Explore crime patterns without the map</h2>
+                            <p>The structure is now in place for trend analysis, category rankings, ward comparisons, seasonal patterns, and tables. Live data wiring comes in the next checkpoints.</p>
+                        </div>
+                        <div class="analytics-hero-note">
+                            <span class="analytics-note-label">Checkpoint 2</span>
+                            <p>Layout only. These panels are placeholders so you can review the information architecture before the data layer is connected.</p>
+                        </div>
+                    </header>
+
+                    <section class="analytics-kpi-grid" aria-label="Analytics summary placeholders">
+                        <article class="analytics-panel analytics-stat-card">
+                            <span class="analytics-panel-label">Overview</span>
+                            <strong>Key metrics row</strong>
+                            <p>Total crimes, active window, dominant category, and city-centre share will live here.</p>
+                        </article>
+                        <article class="analytics-panel analytics-stat-card">
+                            <span class="analytics-panel-label">Comparison</span>
+                            <strong>City centre split</strong>
+                            <p>A compact comparison block will contrast city-centre activity against the rest of Leeds.</p>
+                        </article>
+                        <article class="analytics-panel analytics-stat-card">
+                            <span class="analytics-panel-label">Signals</span>
+                            <strong>Fast takeaways</strong>
+                            <p>This area is reserved for short summaries driven by the selected crime type and date range.</p>
+                        </article>
+                    </section>
+
+                    <section class="analytics-main-grid" aria-label="Analytics chart placeholders">
+                        <article class="analytics-panel analytics-panel-large">
+                            <div class="analytics-panel-header">
+                                <div>
+                                    <span class="analytics-panel-label">Trend</span>
+                                    <h3>Monthly trend chart</h3>
+                                </div>
+                                <span class="analytics-panel-meta">Primary view</span>
+                            </div>
+                            <div class="analytics-chart-placeholder analytics-chart-lines" aria-hidden="true">
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                            </div>
+                        </article>
+
+                        <article class="analytics-panel">
+                            <div class="analytics-panel-header">
+                                <div>
+                                    <span class="analytics-panel-label">Ranking</span>
+                                    <h3>Crime type bars</h3>
+                                </div>
+                                <span class="analytics-panel-meta">Top categories</span>
+                            </div>
+                            <div class="analytics-bar-stack" aria-hidden="true">
+                                <div class="analytics-bar-row"><span class="analytics-bar-label">Violence</span><div class="analytics-bar-track"><div class="analytics-bar-fill analytics-fill-1"></div></div></div>
+                                <div class="analytics-bar-row"><span class="analytics-bar-label">Shoplifting</span><div class="analytics-bar-track"><div class="analytics-bar-fill analytics-fill-2"></div></div></div>
+                                <div class="analytics-bar-row"><span class="analytics-bar-label">Burglary</span><div class="analytics-bar-track"><div class="analytics-bar-fill analytics-fill-3"></div></div></div>
+                                <div class="analytics-bar-row"><span class="analytics-bar-label">Vehicle crime</span><div class="analytics-bar-track"><div class="analytics-bar-fill analytics-fill-4"></div></div></div>
+                                <div class="analytics-bar-row"><span class="analytics-bar-label">Other theft</span><div class="analytics-bar-track"><div class="analytics-bar-fill analytics-fill-5"></div></div></div>
+                            </div>
+                        </article>
+
+                        <article class="analytics-panel">
+                            <div class="analytics-panel-header">
+                                <div>
+                                    <span class="analytics-panel-label">Comparison</span>
+                                    <h3>City centre vs rest</h3>
+                                </div>
+                                <span class="analytics-panel-meta">Two-way split</span>
+                            </div>
+                            <div class="analytics-comparison-placeholder" aria-hidden="true">
+                                <div class="analytics-comparison-card">
+                                    <span>City centre</span>
+                                    <strong>Focus block</strong>
+                                </div>
+                                <div class="analytics-comparison-divider"></div>
+                                <div class="analytics-comparison-card muted">
+                                    <span>Outer Leeds</span>
+                                    <strong>Benchmark block</strong>
+                                </div>
+                            </div>
+                        </article>
+                    </section>
+
+                    <section class="analytics-secondary-grid" aria-label="Analytics deep-dive placeholders">
+                        <article class="analytics-panel">
+                            <div class="analytics-panel-header">
+                                <div>
+                                    <span class="analytics-panel-label">Seasonality</span>
+                                    <h3>Crime type by month matrix</h3>
+                                </div>
+                                <span class="analytics-panel-meta">Heatmap view</span>
+                            </div>
+                            <div class="analytics-matrix-placeholder" aria-hidden="true">
+                                <span class="tone-1"></span>
+                                <span class="tone-2"></span>
+                                <span class="tone-3"></span>
+                                <span class="tone-4"></span>
+                                <span class="tone-2"></span>
+                                <span class="tone-1"></span>
+                                <span class="tone-3"></span>
+                                <span class="tone-4"></span>
+                                <span class="tone-2"></span>
+                                <span class="tone-3"></span>
+                                <span class="tone-1"></span>
+                                <span class="tone-4"></span>
+                                <span class="tone-4"></span>
+                                <span class="tone-2"></span>
+                                <span class="tone-1"></span>
+                                <span class="tone-3"></span>
+                            </div>
+                        </article>
+
+                        <article class="analytics-panel analytics-panel-wide">
+                            <div class="analytics-panel-header">
+                                <div>
+                                    <span class="analytics-panel-label">Table</span>
+                                    <h3>Ward ranking table</h3>
+                                </div>
+                                <span class="analytics-panel-meta">Sortable later</span>
+                            </div>
+                            <div class="analytics-table-placeholder" role="presentation">
+                                <div class="analytics-table-row analytics-table-head">
+                                    <span>Ward</span>
+                                    <span>Total</span>
+                                    <span>Share</span>
+                                    <span>Trend</span>
+                                </div>
+                                <div class="analytics-table-row"><span>Headingley</span><span>Placeholder</span><span>Placeholder</span><span>Placeholder</span></div>
+                                <div class="analytics-table-row"><span>Little London &amp; Woodhouse</span><span>Placeholder</span><span>Placeholder</span><span>Placeholder</span></div>
+                                <div class="analytics-table-row"><span>Hyde Park &amp; Burley</span><span>Placeholder</span><span>Placeholder</span><span>Placeholder</span></div>
+                                <div class="analytics-table-row"><span>Hunslet &amp; Riverside</span><span>Placeholder</span><span>Placeholder</span><span>Placeholder</span></div>
+                                <div class="analytics-table-row"><span>Roundhay</span><span>Placeholder</span><span>Placeholder</span><span>Placeholder</span></div>
+                            </div>
+                        </article>
+                    </section>
                 </div>
             </section>
             <div class="loading-overlay" id="loading">
