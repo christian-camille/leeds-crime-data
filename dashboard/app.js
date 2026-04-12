@@ -717,6 +717,15 @@ function getTopCrimeTypeSummary(filteredResults) {
     };
 }
 
+function escapeHtml(value) {
+    return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
 function formatAnalyticsDateRange(params) {
     const startMonthName = MONTHS[params.monthStart - 1].substring(0, 3);
     const endMonthName = MONTHS[params.monthEnd - 1].substring(0, 3);
@@ -751,6 +760,158 @@ function updateAnalyticsSummary(filteredResults) {
     cityCentreContextEl.textContent = totalCrimes > 0
         ? `${cityCentreCrimes.toLocaleString()} city-centre crimes versus ${(totalCrimes - cityCentreCrimes).toLocaleString()} across the rest of Leeds`
         : 'Adjust the current filters to populate this comparison';
+}
+
+function getMonthKeysInRange(params) {
+    const keys = [];
+    let year = params.yearStart;
+    let month = params.monthStart;
+
+    while (year < params.yearEnd || (year === params.yearEnd && month <= params.monthEnd)) {
+        keys.push(`${year}-${String(month).padStart(2, '0')}`);
+        month += 1;
+        if (month > 12) {
+            month = 1;
+            year += 1;
+        }
+    }
+
+    return keys;
+}
+
+function formatMonthKeyShort(monthKey) {
+    const [year, month] = monthKey.split('-').map(Number);
+    return `${MONTHS[month - 1].substring(0, 3)} ${String(year).slice(-2)}`;
+}
+
+function buildTrendChartMarkup(monthKeys, monthValues) {
+    const width = 720;
+    const height = 250;
+    const padding = { top: 16, right: 18, bottom: 36, left: 18 };
+    const innerWidth = width - padding.left - padding.right;
+    const innerHeight = height - padding.top - padding.bottom;
+    const maxValue = Math.max(...monthValues, 1);
+
+    const points = monthValues.map((value, index) => {
+        const x = padding.left + (monthValues.length === 1 ? innerWidth / 2 : (index / (monthValues.length - 1)) * innerWidth);
+        const y = padding.top + innerHeight - ((value / maxValue) * innerHeight);
+        return { x, y, value, label: monthKeys[index] };
+    });
+
+    const linePoints = points.map((point) => `${point.x},${point.y}`).join(' ');
+    const areaPoints = `${padding.left},${padding.top + innerHeight} ${linePoints} ${padding.left + innerWidth},${padding.top + innerHeight}`;
+    const labelIndexes = Array.from(new Set([
+        0,
+        Math.floor((monthKeys.length - 1) / 2),
+        monthKeys.length - 1
+    ])).filter((index) => index >= 0);
+
+    const topMonthIndex = monthValues.indexOf(Math.max(...monthValues));
+    const latestValue = monthValues[monthValues.length - 1] || 0;
+
+    return `
+        <div class="analytics-chart-content">
+            <svg class="analytics-trend-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="Monthly crime trend chart">
+                <line class="analytics-trend-grid" x1="${padding.left}" y1="${padding.top + innerHeight}" x2="${padding.left + innerWidth}" y2="${padding.top + innerHeight}"></line>
+                <line class="analytics-trend-grid" x1="${padding.left}" y1="${padding.top + innerHeight * 0.5}" x2="${padding.left + innerWidth}" y2="${padding.top + innerHeight * 0.5}"></line>
+                <polygon class="analytics-trend-area" points="${areaPoints}"></polygon>
+                <polyline class="analytics-trend-line" points="${linePoints}"></polyline>
+                ${points.map((point) => `<circle class="analytics-trend-dot" cx="${point.x}" cy="${point.y}" r="4"></circle>`).join('')}
+                ${labelIndexes.map((index) => {
+                    const point = points[index];
+                    return `<text class="analytics-axis-label" x="${point.x}" y="${height - 10}" text-anchor="middle">${formatMonthKeyShort(point.label)}</text>`;
+                }).join('')}
+                <text class="analytics-axis-value" x="${padding.left}" y="${padding.top + 12}">${maxValue.toLocaleString()}</text>
+            </svg>
+            <div class="analytics-trend-caption">
+                <span>Peak month: ${escapeHtml(formatMonthKeyShort(monthKeys[topMonthIndex]))} with ${monthValues[topMonthIndex].toLocaleString()} crimes</span>
+                <span>Latest month: ${latestValue.toLocaleString()} crimes</span>
+            </div>
+        </div>
+    `;
+}
+
+function renderAnalyticsTrend(filteredResults) {
+    const container = document.getElementById('analytics-trend-chart');
+    const monthKeys = getMonthKeysInRange(filteredResults.params);
+    const monthValues = monthKeys.map((monthKey) => filteredResults.aggregations.byMonth[monthKey] || 0);
+
+    if (!filteredResults.totalCrimes || !monthKeys.length) {
+        container.innerHTML = '<div class="analytics-empty-state">No crime data matches the current filters.</div>';
+        return;
+    }
+
+    container.innerHTML = buildTrendChartMarkup(monthKeys, monthValues);
+}
+
+function renderAnalyticsCrimeRanking(filteredResults) {
+    const container = document.getElementById('analytics-crime-ranking');
+    const sortedCrimeTypes = Object.entries(filteredResults.aggregations.byCrimeType)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5);
+
+    if (!sortedCrimeTypes.length) {
+        container.innerHTML = '<div class="analytics-empty-state">No crime categories are available for the current filters.</div>';
+        return;
+    }
+
+    const maxValue = sortedCrimeTypes[0][1];
+
+    container.innerHTML = sortedCrimeTypes.map(([crimeType, count]) => {
+        const width = maxValue > 0 ? (count / maxValue) * 100 : 0;
+        const share = filteredResults.totalCrimes > 0 ? (count / filteredResults.totalCrimes) * 100 : 0;
+
+        return `
+            <div class="analytics-bar-row">
+                <div>
+                    <div class="analytics-bar-meta">
+                        <span class="analytics-bar-label">${escapeHtml(crimeType)}</span>
+                        <span class="analytics-bar-value">${count.toLocaleString()} · ${share.toFixed(1)}%</span>
+                    </div>
+                    <div class="analytics-bar-track">
+                        <div class="analytics-bar-fill" style="width: ${width}%"></div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function renderAnalyticsCityCentreComparison(filteredResults) {
+    const container = document.getElementById('analytics-city-centre-comparison');
+    const totalCrimes = filteredResults.totalCrimes;
+    const cityCentreCrimes = filteredResults.aggregations.byCityCentre.cityCentre || 0;
+    const restOfLeedsCrimes = filteredResults.aggregations.byCityCentre.restOfLeeds || 0;
+
+    if (!totalCrimes) {
+        container.innerHTML = '<div class="analytics-empty-state">City-centre comparison will appear once the current filters return crime data.</div>';
+        return;
+    }
+
+    const cityCentreShare = (cityCentreCrimes / totalCrimes) * 100;
+    const restOfLeedsShare = (restOfLeedsCrimes / totalCrimes) * 100;
+
+    container.innerHTML = `
+        <div class="analytics-comparison-card">
+            <span>City centre</span>
+            <strong>${cityCentreCrimes.toLocaleString()} crimes</strong>
+            <p>${cityCentreShare.toFixed(1)}% of the filtered total</p>
+            <div class="analytics-comparison-meter"><span style="width: ${cityCentreShare}%"></span></div>
+        </div>
+        <div class="analytics-comparison-divider"></div>
+        <div class="analytics-comparison-card muted">
+            <span>Outer Leeds</span>
+            <strong>${restOfLeedsCrimes.toLocaleString()} crimes</strong>
+            <p>${restOfLeedsShare.toFixed(1)}% of the filtered total</p>
+            <div class="analytics-comparison-meter"><span style="width: ${restOfLeedsShare}%"></span></div>
+        </div>
+    `;
+}
+
+function updateAnalyticsPrimaryViews(filteredResults) {
+    renderAnalyticsTrend(filteredResults);
+    renderAnalyticsCrimeRanking(filteredResults);
+    renderAnalyticsCityCentreComparison(filteredResults);
 }
 
 
@@ -795,6 +956,7 @@ function applyFilters() {
     }
 
     updateAnalyticsSummary(filteredResults);
+    updateAnalyticsPrimaryViews(filteredResults);
 
     updateActiveSearchResults(getSearchFilterParams());
 }
