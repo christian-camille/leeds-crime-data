@@ -56,6 +56,7 @@ let intensitySlider;
 let maxCrimeCount = 100;
 let currentWardData = [];
 let maxAvailableDate = { year: 0, month: 0 };
+let currentFilteredResults = null;
 
 async function fetchJsonFromCandidates(paths) {
     let lastError = null;
@@ -555,30 +556,88 @@ function filterPoints(params) {
     });
 }
 
-
-
-function applyFilters() {
-    const params = getFilterParams();
-    const filteredPoints = filterPoints(params);
-
-    const aggregated = {};
-
-    filteredPoints.forEach(point => {
-        const [lat, lon, pType, pYear, pMonth, count] = point;
-        const key = `${lat},${lon}`;
-        if (!aggregated[key]) {
-            aggregated[key] = { lat, lon, count: 0 };
+function aggregateCounts(points, keyBuilder) {
+    return points.reduce((totals, point) => {
+        const key = keyBuilder(point);
+        if (key === null || key === undefined) {
+            return totals;
         }
-        aggregated[key].count += count;
+
+        totals[key] = (totals[key] || 0) + point[5];
+        return totals;
+    }, {});
+}
+
+function aggregateByLocation(points) {
+    return points.reduce((totals, point) => {
+        const [lat, lon, , , , count] = point;
+        const key = `${lat},${lon}`;
+
+        if (!totals[key]) {
+            totals[key] = { lat, lon, count: 0 };
+        }
+
+        totals[key].count += count;
+        return totals;
+    }, {});
+}
+
+function aggregateByCrimeType(points) {
+    return aggregateCounts(points, (point) => crimeData.t[point[2]]);
+}
+
+function aggregateByWard(points) {
+    return aggregateCounts(points, (point) => {
+        const wardIdx = point[8];
+        return wardIdx !== undefined ? crimeData.w[wardIdx] : null;
     });
+}
 
-    const heatPoints = [];
-    let localMax = 0;
-
-    Object.values(aggregated).forEach(p => {
-        if (p.count > localMax) localMax = p.count;
+function aggregateByMonth(points) {
+    return aggregateCounts(points, (point) => {
+        const year = point[3];
+        const month = String(point[4]).padStart(2, '0');
+        return `${year}-${month}`;
     });
+}
 
+function aggregateByCityCentre(points) {
+    return aggregateCounts(points, (point) => (point[6] ? 'cityCentre' : 'restOfLeeds'));
+}
+
+function aggregateByCrimeTypeMonth(points) {
+    return points.reduce((totals, point) => {
+        const crimeType = crimeData.t[point[2]];
+        const monthKey = String(point[4]).padStart(2, '0');
+
+        if (!totals[crimeType]) {
+            totals[crimeType] = {};
+        }
+
+        totals[crimeType][monthKey] = (totals[crimeType][monthKey] || 0) + point[5];
+        return totals;
+    }, {});
+}
+
+function aggregateWardDetails(points) {
+    return points.reduce((totals, point) => {
+        const wardIdx = point[8];
+        if (wardIdx === undefined) {
+            return totals;
+        }
+
+        const wardName = crimeData.w[wardIdx];
+        if (!totals[wardName]) {
+            totals[wardName] = { total: 0, types: {} };
+        }
+
+        totals[wardName].total += point[5];
+        totals[wardName].types[point[2]] = (totals[wardName].types[point[2]] || 0) + point[5];
+        return totals;
+    }, {});
+}
+
+function getIntensitySettings(locationTotals) {
     let minFilterPercent = 0;
     let sensitivityPercent = 100;
 
@@ -586,7 +645,9 @@ function applyFilters() {
         [minFilterPercent, sensitivityPercent] = intensitySlider.get().map(Number);
     }
 
-    const sortedCounts = Object.values(aggregated).map(p => p.count).sort((a, b) => a - b);
+    const sortedCounts = Object.values(locationTotals)
+        .map((location) => location.count)
+        .sort((a, b) => a - b);
     const numPoints = sortedCounts.length;
 
     const minFilterIndex = Math.floor((minFilterPercent / 100) * numPoints);
@@ -595,11 +656,53 @@ function applyFilters() {
     const sensitivityIndex = Math.floor((sensitivityPercent / 100) * numPoints);
     const saturationPoint = numPoints > 0 ? sortedCounts[Math.min(sensitivityIndex, numPoints - 1)] : 1;
 
-    Object.values(aggregated).forEach(p => {
-        if (p.count >= minFilter) {
-            heatPoints.push([p.lat, p.lon, p.count]);
+    return {
+        minFilterPercent,
+        sensitivityPercent,
+        minFilter,
+        saturationPoint
+    };
+}
+
+function buildHeatPoints(locationTotals, minFilter) {
+    return Object.values(locationTotals).reduce((points, location) => {
+        if (location.count >= minFilter) {
+            points.push([location.lat, location.lon, location.count]);
         }
-    });
+        return points;
+    }, []);
+}
+
+function buildFilteredResults(params) {
+    const points = filterPoints(params);
+    const locationTotals = aggregateByLocation(points);
+    const intensity = getIntensitySettings(locationTotals);
+    const heatPoints = buildHeatPoints(locationTotals, intensity.minFilter);
+
+    return {
+        params,
+        points,
+        totalCrimes: points.reduce((sum, point) => sum + point[5], 0),
+        locationTotals,
+        heatPoints,
+        intensity,
+        aggregations: {
+            byCrimeType: aggregateByCrimeType(points),
+            byWard: aggregateByWard(points),
+            byMonth: aggregateByMonth(points),
+            byCityCentre: aggregateByCityCentre(points),
+            byCrimeTypeMonth: aggregateByCrimeTypeMonth(points),
+            wardDetails: aggregateWardDetails(points)
+        }
+    };
+}
+
+
+
+function applyFilters() {
+    const params = getFilterParams();
+    const filteredResults = buildFilteredResults(params);
+    currentFilteredResults = filteredResults;
 
     if (currentMapMode === 'heatmap') {
         if (geoJsonLayer) map.removeLayer(geoJsonLayer);
@@ -608,11 +711,11 @@ function applyFilters() {
             map.removeLayer(heatLayer);
         }
 
-        heatLayer = L.heatLayer(heatPoints, {
+            heatLayer = L.heatLayer(filteredResults.heatPoints, {
             radius: 25,
             blur: 35,
             maxZoom: 15,
-            max: saturationPoint > 0 ? saturationPoint : 1,
+                max: filteredResults.intensity.saturationPoint > 0 ? filteredResults.intensity.saturationPoint : 1,
             gradient: {
                 0.0: '#0d0887',
                 0.2: '#5302a3',
@@ -624,15 +727,15 @@ function applyFilters() {
         }).addTo(map);
     } else if (currentMapMode === 'wards') {
         if (heatLayer) map.removeLayer(heatLayer);
-        updateChoropleth(filteredPoints);
+        updateChoropleth(filteredResults);
     } else {
         if (heatLayer) map.removeLayer(heatLayer);
         if (geoJsonLayer) map.removeLayer(geoJsonLayer);
     }
 
     if (currentMapMode !== 'search') {
-        updateStats(filteredPoints, params);
-        updateWardChart(filteredPoints);
+        updateStats(filteredResults);
+        updateWardChart(filteredResults);
     }
 
     updateActiveSearchResults(getSearchFilterParams());
@@ -650,27 +753,11 @@ async function loadWardBoundaries() {
     }
 }
 
-function updateChoropleth(points) {
+function updateChoropleth(filteredResults) {
     if (!wardGeoJsonData) return;
 
-    // Track total and type breakdown per ward
-    const wardCounts = {};
+    const wardCounts = filteredResults.aggregations.wardDetails;
     let maxCount = 0;
-
-    points.forEach(point => {
-        const [, , pType, , , count, , , wardIdx] = point;
-
-        if (wardIdx !== undefined) {
-            const wardName = crimeData.w[wardIdx];
-            if (!wardCounts[wardName]) {
-                wardCounts[wardName] = { total: 0, types: {} };
-            }
-
-            wardCounts[wardName].total += count;
-            // Track crime type counts
-            wardCounts[wardName].types[pType] = (wardCounts[wardName].types[pType] || 0) + count;
-        }
-    });
 
     Object.values(wardCounts).forEach(data => {
         if (data.total > maxCount) maxCount = data.total;
@@ -795,32 +882,17 @@ info.update = function (props, data) {
     this._div.innerHTML = content;
 };
 
-function updateStats(points, params) {
-    const totalCrimes = points.reduce((sum, p) => sum + p[5], 0);
-    document.getElementById('total-crimes').textContent = totalCrimes.toLocaleString();
+function updateStats(filteredResults) {
+    document.getElementById('total-crimes').textContent = filteredResults.totalCrimes.toLocaleString();
 
-    const startMonthName = MONTHS[params.monthStart - 1].substring(0, 3);
-    const endMonthName = MONTHS[params.monthEnd - 1].substring(0, 3);
+    const startMonthName = MONTHS[filteredResults.params.monthStart - 1].substring(0, 3);
+    const endMonthName = MONTHS[filteredResults.params.monthEnd - 1].substring(0, 3);
     document.getElementById('date-range').textContent =
-        `${startMonthName} ${params.yearStart} - ${endMonthName} ${params.yearEnd}`;
+        `${startMonthName} ${filteredResults.params.yearStart} - ${endMonthName} ${filteredResults.params.yearEnd}`;
 }
 
-function updateWardChart(points) {
-    const wardTotals = {};
-
-    points.forEach(point => {
-        const [lat, lon, pType, pYear, pMonth, count, isCityCentre, distIdx, wardIdx] = point;
-
-        if (wardIdx !== undefined) {
-            const wardName = crimeData.w[wardIdx];
-            if (!wardTotals[wardName]) {
-                wardTotals[wardName] = 0;
-            }
-            wardTotals[wardName] += count;
-        }
-    });
-
-    const sortedWards = Object.entries(wardTotals)
+function updateWardChart(filteredResults) {
+    const sortedWards = Object.entries(filteredResults.aggregations.byWard)
         .sort((a, b) => b[1] - a[1]);
 
     currentWardData = sortedWards;
