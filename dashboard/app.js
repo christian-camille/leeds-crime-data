@@ -697,6 +697,62 @@ function buildFilteredResults(params) {
     };
 }
 
+function getTopCrimeTypeSummary(filteredResults) {
+    const sortedCrimeTypes = Object.entries(filteredResults.aggregations.byCrimeType)
+        .sort((a, b) => b[1] - a[1]);
+
+    if (!sortedCrimeTypes.length) {
+        return null;
+    }
+
+    const [crimeType, count] = sortedCrimeTypes[0];
+    const share = filteredResults.totalCrimes > 0
+        ? (count / filteredResults.totalCrimes) * 100
+        : 0;
+
+    return {
+        crimeType,
+        count,
+        share
+    };
+}
+
+function formatAnalyticsDateRange(params) {
+    const startMonthName = MONTHS[params.monthStart - 1].substring(0, 3);
+    const endMonthName = MONTHS[params.monthEnd - 1].substring(0, 3);
+    return `${startMonthName} ${params.yearStart} - ${endMonthName} ${params.yearEnd}`;
+}
+
+function updateAnalyticsSummary(filteredResults) {
+    const totalCrimesEl = document.getElementById('analytics-total-crimes');
+    const dateWindowEl = document.getElementById('analytics-date-window');
+    const crimeContextEl = document.getElementById('analytics-crime-context');
+    const topCategoryEl = document.getElementById('analytics-top-category');
+    const cityCentreShareEl = document.getElementById('analytics-city-centre-share');
+    const cityCentreContextEl = document.getElementById('analytics-city-centre-context');
+
+    const totalCrimes = filteredResults.totalCrimes;
+    const topCrime = getTopCrimeTypeSummary(filteredResults);
+    const cityCentreCrimes = filteredResults.aggregations.byCityCentre.cityCentre || 0;
+    const cityCentreShare = totalCrimes > 0 ? (cityCentreCrimes / totalCrimes) * 100 : 0;
+    const activeCrimeType = filteredResults.params.crimeType === 'all'
+        ? 'All crime types'
+        : filteredResults.params.crimeType;
+
+    totalCrimesEl.textContent = totalCrimes.toLocaleString();
+    dateWindowEl.textContent = formatAnalyticsDateRange(filteredResults.params);
+
+    crimeContextEl.textContent = activeCrimeType;
+    topCategoryEl.textContent = topCrime
+        ? `${topCrime.crimeType} leads with ${topCrime.count.toLocaleString()} crimes (${topCrime.share.toFixed(1)}%)`
+        : 'No matching crimes in the current filter window';
+
+    cityCentreShareEl.textContent = `${cityCentreShare.toFixed(1)}% city centre`;
+    cityCentreContextEl.textContent = totalCrimes > 0
+        ? `${cityCentreCrimes.toLocaleString()} city-centre crimes versus ${(totalCrimes - cityCentreCrimes).toLocaleString()} across the rest of Leeds`
+        : 'Adjust the current filters to populate this comparison';
+}
+
 
 
 function applyFilters() {
@@ -711,11 +767,11 @@ function applyFilters() {
             map.removeLayer(heatLayer);
         }
 
-            heatLayer = L.heatLayer(filteredResults.heatPoints, {
+        heatLayer = L.heatLayer(filteredResults.heatPoints, {
             radius: 25,
             blur: 35,
             maxZoom: 15,
-                max: filteredResults.intensity.saturationPoint > 0 ? filteredResults.intensity.saturationPoint : 1,
+            max: filteredResults.intensity.saturationPoint > 0 ? filteredResults.intensity.saturationPoint : 1,
             gradient: {
                 0.0: '#0d0887',
                 0.2: '#5302a3',
@@ -737,6 +793,8 @@ function applyFilters() {
         updateStats(filteredResults);
         updateWardChart(filteredResults);
     }
+
+    updateAnalyticsSummary(filteredResults);
 
     updateActiveSearchResults(getSearchFilterParams());
 }

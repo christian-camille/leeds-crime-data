@@ -666,6 +666,18 @@ input[type="text"]:focus {
     letter-spacing: -0.02em;
 }
 
+.analytics-stat-value {
+    font-size: clamp(1.45rem, 2vw, 2.15rem) !important;
+    line-height: 1.05;
+    letter-spacing: -0.04em !important;
+    color: var(--text-primary);
+}
+
+.analytics-stat-detail {
+    color: var(--text-secondary);
+    font-size: 0.92rem !important;
+}
+
 .analytics-main-grid {
     display: grid;
     grid-template-columns: minmax(0, 1.45fr) minmax(320px, 0.9fr);

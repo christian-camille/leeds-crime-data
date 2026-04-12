@@ -143,26 +143,26 @@
                             <p>The structure is now in place for trend analysis, category rankings, ward comparisons, seasonal patterns, and tables. Live data wiring comes in the next checkpoints.</p>
                         </div>
                         <div class="analytics-hero-note">
-                            <span class="analytics-note-label">Checkpoint 2</span>
-                            <p>Layout only. These panels are placeholders so you can review the information architecture before the data layer is connected.</p>
+                            <span class="analytics-note-label">Checkpoint 4</span>
+                            <p>The summary cards are now filter-aware. The larger charts, matrix, and ward table are still placeholders until the next checkpoints.</p>
                         </div>
                     </header>
 
-                    <section class="analytics-kpi-grid" aria-label="Analytics summary placeholders">
+                    <section class="analytics-kpi-grid" aria-label="Analytics summary cards">
                         <article class="analytics-panel analytics-stat-card">
                             <span class="analytics-panel-label">Overview</span>
-                            <strong>Key metrics row</strong>
-                            <p>Total crimes, active window, dominant category, and city-centre share will live here.</p>
+                            <strong id="analytics-total-crimes" class="analytics-stat-value">-</strong>
+                            <p id="analytics-date-window" class="analytics-stat-detail">Selected window</p>
+                        </article>
+                        <article class="analytics-panel analytics-stat-card">
+                            <span class="analytics-panel-label">Focus</span>
+                            <strong id="analytics-crime-context" class="analytics-stat-value">-</strong>
+                            <p id="analytics-top-category" class="analytics-stat-detail">Strongest category</p>
                         </article>
                         <article class="analytics-panel analytics-stat-card">
                             <span class="analytics-panel-label">Comparison</span>
-                            <strong>City centre split</strong>
-                            <p>A compact comparison block will contrast city-centre activity against the rest of Leeds.</p>
-                        </article>
-                        <article class="analytics-panel analytics-stat-card">
-                            <span class="analytics-panel-label">Signals</span>
-                            <strong>Fast takeaways</strong>
-                            <p>This area is reserved for short summaries driven by the selected crime type and date range.</p>
+                            <strong id="analytics-city-centre-share" class="analytics-stat-value">-</strong>
+                            <p id="analytics-city-centre-context" class="analytics-stat-detail">City centre activity share</p>
                         </article>
                     </section>
 
