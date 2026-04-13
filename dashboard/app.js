@@ -57,6 +57,7 @@ let maxCrimeCount = 100;
 let currentWardData = [];
 let maxAvailableDate = { year: 0, month: 0 };
 let currentFilteredResults = null;
+let analyticsWardTableSort = { key: 'total', direction: 'desc' };
 
 async function fetchJsonFromCandidates(paths) {
     let lastError = null;
@@ -637,6 +638,25 @@ function aggregateWardDetails(points) {
     }, {});
 }
 
+function aggregateWardMonthly(points) {
+    return points.reduce((totals, point) => {
+        const wardIdx = point[8];
+        if (wardIdx === undefined) {
+            return totals;
+        }
+
+        const wardName = crimeData.w[wardIdx];
+        const monthKey = `${point[3]}-${String(point[4]).padStart(2, '0')}`;
+
+        if (!totals[wardName]) {
+            totals[wardName] = {};
+        }
+
+        totals[wardName][monthKey] = (totals[wardName][monthKey] || 0) + point[5];
+        return totals;
+    }, {});
+}
+
 function getIntensitySettings(locationTotals) {
     let minFilterPercent = 0;
     let sensitivityPercent = 100;
@@ -692,7 +712,8 @@ function buildFilteredResults(params) {
             byMonth: aggregateByMonth(points),
             byCityCentre: aggregateByCityCentre(points),
             byCrimeTypeMonth: aggregateByCrimeTypeMonth(points),
-            wardDetails: aggregateWardDetails(points)
+            wardDetails: aggregateWardDetails(points),
+            wardMonthly: aggregateWardMonthly(points)
         }
     };
 }
@@ -914,6 +935,182 @@ function updateAnalyticsPrimaryViews(filteredResults) {
     renderAnalyticsCityCentreComparison(filteredResults);
 }
 
+function getSeasonalityRows(filteredResults) {
+    return Object.entries(filteredResults.aggregations.byCrimeType)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5)
+        .map(([crimeType]) => ({
+            crimeType,
+            months: MONTHS.map((_, index) => {
+                const key = String(index + 1).padStart(2, '0');
+                return filteredResults.aggregations.byCrimeTypeMonth[crimeType]?.[key] || 0;
+            })
+        }));
+}
+
+function getSeasonalityColor(value, maxValue) {
+    if (!maxValue || value <= 0) {
+        return 'rgba(255, 255, 255, 0.04)';
+    }
+
+    const ratio = value / maxValue;
+    if (ratio >= 0.75) return 'rgba(239, 68, 68, 0.72)';
+    if (ratio >= 0.5) return 'rgba(245, 158, 11, 0.58)';
+    if (ratio >= 0.25) return 'rgba(99, 102, 241, 0.42)';
+    return 'rgba(99, 102, 241, 0.2)';
+}
+
+function renderAnalyticsSeasonalityMatrix(filteredResults) {
+    const container = document.getElementById('analytics-seasonality-matrix');
+    const rows = getSeasonalityRows(filteredResults);
+
+    if (!rows.length || !filteredResults.totalCrimes) {
+        container.innerHTML = '<div class="analytics-empty-state">Seasonality patterns will appear once the current filters return crime data.</div>';
+        return;
+    }
+
+    const maxValue = Math.max(...rows.flatMap((row) => row.months), 1);
+
+    container.innerHTML = `
+        <div class="analytics-matrix-shell">
+            <div class="analytics-matrix-legend">
+                <span>Top crime types across the selected period</span>
+                <span class="analytics-matrix-scale" aria-hidden="true"></span>
+            </div>
+            <div class="analytics-matrix-grid" role="grid" aria-label="Crime type by month seasonality matrix">
+                <span class="analytics-matrix-corner">Type</span>
+                ${MONTHS.map((month) => `<span class="analytics-matrix-month">${month.substring(0, 3)}</span>`).join('')}
+                ${rows.map((row) => `
+                    <span class="analytics-matrix-label" title="${escapeHtml(row.crimeType)}">${escapeHtml(row.crimeType)}</span>
+                    ${row.months.map((value, index) => `<span class="analytics-matrix-cell" title="${escapeHtml(row.crimeType)} • ${MONTHS[index]}: ${value.toLocaleString()} crimes" style="background: ${getSeasonalityColor(value, maxValue)}"></span>`).join('')}
+                `).join('')}
+            </div>
+        </div>
+    `;
+}
+
+function getWardTrendData(monthlyTotals, params) {
+    const monthKeys = getMonthKeysInRange(params);
+    const latestKeys = monthKeys.slice(-3);
+    const previousKeys = monthKeys.slice(-6, -3);
+
+    const latestTotal = latestKeys.reduce((sum, key) => sum + (monthlyTotals[key] || 0), 0);
+    const previousTotal = previousKeys.reduce((sum, key) => sum + (monthlyTotals[key] || 0), 0);
+
+    if (previousTotal === 0) {
+        return latestTotal > 0 ? 100 : 0;
+    }
+
+    return ((latestTotal - previousTotal) / previousTotal) * 100;
+}
+
+function getWardTableRows(filteredResults) {
+    const totalCrimes = filteredResults.totalCrimes || 1;
+    const wardMonthly = filteredResults.aggregations.wardMonthly;
+
+    return Object.entries(filteredResults.aggregations.byWard).map(([ward, total]) => {
+        const share = (total / totalCrimes) * 100;
+        const trend = getWardTrendData(wardMonthly[ward] || {}, filteredResults.params);
+        return { ward, total, share, trend };
+    });
+}
+
+function getWardSortIndicator(key) {
+    if (analyticsWardTableSort.key !== key) {
+        return '↕';
+    }
+
+    return analyticsWardTableSort.direction === 'asc' ? '↑' : '↓';
+}
+
+function sortWardTableRows(rows) {
+    const sorted = [...rows].sort((left, right) => {
+        const sortKey = analyticsWardTableSort.key;
+
+        if (sortKey === 'ward') {
+            return left.ward.localeCompare(right.ward);
+        }
+
+        return left[sortKey] - right[sortKey];
+    });
+
+    if (analyticsWardTableSort.direction === 'desc') {
+        sorted.reverse();
+    }
+
+    return sorted;
+}
+
+function getTrendClass(trend) {
+    if (trend > 0.1) return 'analytics-trend-negative';
+    if (trend < -0.1) return 'analytics-trend-positive';
+    return 'analytics-trend-neutral';
+}
+
+function formatTrend(trend) {
+    if (Math.abs(trend) < 0.1) {
+        return 'Flat';
+    }
+
+    const prefix = trend > 0 ? '+' : '';
+    return `${prefix}${trend.toFixed(1)}%`;
+}
+
+function setAnalyticsWardTableSort(key) {
+    if (analyticsWardTableSort.key === key) {
+        analyticsWardTableSort.direction = analyticsWardTableSort.direction === 'asc' ? 'desc' : 'asc';
+    } else {
+        analyticsWardTableSort = {
+            key,
+            direction: key === 'ward' ? 'asc' : 'desc'
+        };
+    }
+
+    if (currentFilteredResults) {
+        renderAnalyticsWardTable(currentFilteredResults);
+    }
+}
+
+function renderAnalyticsWardTable(filteredResults) {
+    const container = document.getElementById('analytics-ward-table');
+    const rows = getWardTableRows(filteredResults);
+
+    if (!rows.length || !filteredResults.totalCrimes) {
+        container.innerHTML = '<div class="analytics-empty-state">Ward rankings will appear once the current filters return crime data.</div>';
+        return;
+    }
+
+    const sortedRows = sortWardTableRows(rows).slice(0, 10);
+
+    container.innerHTML = `
+        <div class="analytics-table-shell">
+            <div class="analytics-table-row analytics-table-head">
+                <button type="button" data-sort-key="ward">Ward <span class="analytics-table-sort-indicator">${getWardSortIndicator('ward')}</span></button>
+                <button type="button" data-sort-key="total">Total <span class="analytics-table-sort-indicator">${getWardSortIndicator('total')}</span></button>
+                <button type="button" data-sort-key="share">Share <span class="analytics-table-sort-indicator">${getWardSortIndicator('share')}</span></button>
+                <button type="button" data-sort-key="trend">Trend <span class="analytics-table-sort-indicator">${getWardSortIndicator('trend')}</span></button>
+            </div>
+            ${sortedRows.map((row) => `
+                <div class="analytics-table-row">
+                    <span title="${escapeHtml(row.ward)}">${escapeHtml(row.ward)}</span>
+                    <span>${row.total.toLocaleString()}</span>
+                    <span>${row.share.toFixed(1)}%</span>
+                    <span class="${getTrendClass(row.trend)}">${formatTrend(row.trend)}</span>
+                </div>
+            `).join('')}
+        </div>
+    `;
+
+    container.querySelectorAll('[data-sort-key]').forEach((button) => {
+        button.addEventListener('click', () => setAnalyticsWardTableSort(button.dataset.sortKey));
+    });
+}
+
+function updateAnalyticsSecondaryViews(filteredResults) {
+    renderAnalyticsSeasonalityMatrix(filteredResults);
+    renderAnalyticsWardTable(filteredResults);
+}
+
 
 
 function applyFilters() {
@@ -957,6 +1154,7 @@ function applyFilters() {
 
     updateAnalyticsSummary(filteredResults);
     updateAnalyticsPrimaryViews(filteredResults);
+    updateAnalyticsSecondaryViews(filteredResults);
 
     updateActiveSearchResults(getSearchFilterParams());
 }

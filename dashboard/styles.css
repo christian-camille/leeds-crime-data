@@ -918,6 +918,72 @@ input[type="text"]:focus {
     background: linear-gradient(180deg, transparent, rgba(255, 255, 255, 0.18), transparent);
 }
 
+#analytics-seasonality-matrix,
+#analytics-ward-table {
+    min-height: 180px;
+}
+
+.analytics-matrix-shell {
+    display: grid;
+    gap: 14px;
+}
+
+.analytics-matrix-legend {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    color: var(--text-secondary);
+    font-size: 0.78rem;
+}
+
+.analytics-matrix-scale {
+    display: inline-flex;
+    width: 140px;
+    height: 10px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, rgba(99, 102, 241, 0.18), rgba(99, 102, 241, 0.36), rgba(245, 158, 11, 0.52), rgba(239, 68, 68, 0.7));
+}
+
+.analytics-matrix-grid {
+    display: grid;
+    grid-template-columns: minmax(118px, 1.15fr) repeat(12, minmax(28px, 1fr));
+    gap: 8px;
+    align-items: center;
+}
+
+.analytics-matrix-corner,
+.analytics-matrix-month,
+.analytics-matrix-label {
+    color: var(--text-secondary);
+    font-size: 0.74rem;
+}
+
+.analytics-matrix-month {
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.analytics-matrix-label {
+    color: var(--text-primary);
+    font-size: 0.8rem;
+    line-height: 1.2;
+}
+
+.analytics-matrix-cell {
+    aspect-ratio: 1;
+    min-height: 28px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.analytics-table-shell {
+    border-radius: 18px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
 .analytics-matrix-placeholder {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -965,6 +1031,39 @@ input[type="text"]:focus {
     font-weight: 700;
     letter-spacing: 0.06em;
     text-transform: uppercase;
+}
+
+.analytics-table-head button {
+    appearance: none;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    border: none;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-transform: inherit;
+    letter-spacing: inherit;
+    cursor: pointer;
+}
+
+.analytics-table-sort-indicator {
+    color: #c7d2fe;
+    font-size: 0.76rem;
+}
+
+.analytics-trend-positive {
+    color: #86efac;
+}
+
+.analytics-trend-negative {
+    color: #fca5a5;
+}
+
+.analytics-trend-neutral {
+    color: var(--text-secondary);
 }
 
 .analytics-table-head span:first-child {
@@ -1279,6 +1378,17 @@ input[type="text"]:focus {
     .analytics-bar-row,
     .analytics-table-row {
         grid-template-columns: 1fr;
+    }
+
+    .analytics-matrix-grid {
+        grid-template-columns: minmax(92px, 1fr) repeat(12, minmax(24px, 1fr));
+        gap: 6px;
+    }
+
+    .analytics-matrix-label,
+    .analytics-matrix-month,
+    .analytics-table-head button {
+        font-size: 0.7rem;
     }
 
     .analytics-panel-header {
