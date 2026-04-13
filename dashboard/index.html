@@ -4,9 +4,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Leeds Crime Heatmap</title>
+    <title>Leeds Crime Explorer</title>
     <meta name="description"
-        content="Interactive heatmap visualization of crime data in Leeds, UK. Filter by crime type and date range.">
+        content="Interactive map and analytics dashboard for exploring crime data in Leeds, UK. Filter by crime type and date range.">
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.7.1/nouislider.min.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -20,8 +20,8 @@
     <div class="app-container">
         <aside class="sidebar">
             <header class="sidebar-header">
-                <h1>Leeds Crime Map</h1>
-                <p class="subtitle">2017 - 2025</p>
+                <h1>Leeds Crime Explorer</h1>
+                <p class="subtitle">Map and analytics / 2017 - 2025</p>
             </header>
 
             <div class="controls">
@@ -35,10 +35,10 @@
                 <div class="control-group">
                     <label>View</label>
                     <div class="toggle-buttons">
-                        <button id="view-heatmap" class="view-btn active">Heatmap</button>
-                        <button id="view-wards" class="view-btn">Wards</button>
-                        <button id="view-search" class="view-btn">Search</button>
-                        <button id="view-analytics" class="view-btn">Analytics</button>
+                        <button id="view-heatmap" class="view-btn active" type="button" aria-pressed="true">Heatmap</button>
+                        <button id="view-wards" class="view-btn" type="button" aria-pressed="false">Wards</button>
+                        <button id="view-search" class="view-btn" type="button" aria-pressed="false">Search</button>
+                        <button id="view-analytics" class="view-btn" type="button" aria-pressed="false">Analytics</button>
                     </div>
                 </div>
 

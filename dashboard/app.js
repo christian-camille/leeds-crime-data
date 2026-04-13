@@ -1085,10 +1085,10 @@ function renderAnalyticsWardTable(filteredResults) {
     container.innerHTML = `
         <div class="analytics-table-shell">
             <div class="analytics-table-row analytics-table-head">
-                <button type="button" data-sort-key="ward">Ward <span class="analytics-table-sort-indicator">${getWardSortIndicator('ward')}</span></button>
-                <button type="button" data-sort-key="total">Total <span class="analytics-table-sort-indicator">${getWardSortIndicator('total')}</span></button>
-                <button type="button" data-sort-key="share">Share <span class="analytics-table-sort-indicator">${getWardSortIndicator('share')}</span></button>
-                <button type="button" data-sort-key="trend">Trend <span class="analytics-table-sort-indicator">${getWardSortIndicator('trend')}</span></button>
+                <button type="button" data-sort-key="ward" aria-label="Sort ward table by ward name. Current direction ${analyticsWardTableSort.key === 'ward' ? analyticsWardTableSort.direction : 'none'}">Ward <span class="analytics-table-sort-indicator">${getWardSortIndicator('ward')}</span></button>
+                <button type="button" data-sort-key="total" aria-label="Sort ward table by total crimes. Current direction ${analyticsWardTableSort.key === 'total' ? analyticsWardTableSort.direction : 'none'}">Total <span class="analytics-table-sort-indicator">${getWardSortIndicator('total')}</span></button>
+                <button type="button" data-sort-key="share" aria-label="Sort ward table by percentage share. Current direction ${analyticsWardTableSort.key === 'share' ? analyticsWardTableSort.direction : 'none'}">Share <span class="analytics-table-sort-indicator">${getWardSortIndicator('share')}</span></button>
+                <button type="button" data-sort-key="trend" aria-label="Sort ward table by recent trend. Current direction ${analyticsWardTableSort.key === 'trend' ? analyticsWardTableSort.direction : 'none'}">Trend <span class="analytics-table-sort-indicator">${getWardSortIndicator('trend')}</span></button>
             </div>
             ${sortedRows.map((row) => `
                 <div class="analytics-table-row">
@@ -1321,7 +1321,16 @@ function updateWardChart(filteredResults) {
     const maxCount = sortedWards.length > 0 ? sortedWards[0][1] : 1;
 
     const chartContainer = document.getElementById('wards-chart');
+    const showAllWardsButton = document.getElementById('show-all-wards');
     chartContainer.innerHTML = '';
+
+    if (!top10Wards.length) {
+        chartContainer.innerHTML = '<p class="chart-empty-state">No wards match the current filters.</p>';
+        showAllWardsButton.disabled = true;
+        return;
+    }
+
+    showAllWardsButton.disabled = false;
 
     top10Wards.forEach(([ward, count]) => {
         const percentage = (count / maxCount) * 100;
@@ -1436,9 +1445,15 @@ function setMapMode(mode) {
     viewWardsBtn.classList.toggle('active', mode === 'wards');
     viewSearchBtn.classList.toggle('active', mode === 'search');
     viewAnalyticsBtn.classList.toggle('active', mode === 'analytics');
+    viewHeatmapBtn.setAttribute('aria-pressed', String(mode === 'heatmap'));
+    viewWardsBtn.setAttribute('aria-pressed', String(mode === 'wards'));
+    viewSearchBtn.setAttribute('aria-pressed', String(mode === 'search'));
+    viewAnalyticsBtn.setAttribute('aria-pressed', String(mode === 'analytics'));
 
     mapElement.classList.toggle('hidden', mode === 'analytics');
     analyticsView.classList.toggle('hidden', mode !== 'analytics');
+    mapElement.setAttribute('aria-hidden', String(mode === 'analytics'));
+    analyticsView.setAttribute('aria-hidden', String(mode !== 'analytics'));
 
     if (searchMarker) {
         map.removeLayer(searchMarker);
@@ -1492,8 +1507,8 @@ function setMapMode(mode) {
         dateRangeGroup.classList.remove('hidden');
         intensityGroup.classList.add('hidden');
         searchGroup.classList.add('hidden');
-        statsPanel.classList.remove('hidden');
-        chartPanel.classList.remove('hidden');
+        statsPanel.classList.add('hidden');
+        chartPanel.classList.add('hidden');
         if (heatLayer) map.removeLayer(heatLayer);
         if (geoJsonLayer) map.removeLayer(geoJsonLayer);
         if (window.infoControlAdded) {
