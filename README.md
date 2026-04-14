@@ -128,6 +128,15 @@ python src/main.py --step 2
 
 ```
 
+The API fetcher now checkpoints progress per month in `data/raw/.fetch_state`, retries transient network failures automatically, and can resume interrupted months without restarting the whole grid scan.
+
+To repair already fetched months and recover records from missing grid points, run:
+
+```bash
+python src/fetch_data.py --start 2022-11 --end 2026-03 --repair-existing
+
+```
+
 **3. Process & Filter** Normalises API data and performs geospatial filtering.
 
 ```bash
