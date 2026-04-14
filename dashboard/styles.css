@@ -214,6 +214,44 @@ input[type="text"]:focus {
     transition: left 0.1s ease-out;
 }
 
+.analytics-date-presets-group {
+    margin-bottom: 18px;
+}
+
+.analytics-date-presets-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.analytics-date-preset-btn {
+    padding: 8px 10px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    background: rgba(255, 255, 255, 0.03);
+    color: var(--text-secondary);
+    font-family: var(--font-family);
+    font-size: 0.76rem;
+    font-weight: 600;
+    line-height: 1.2;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.analytics-date-preset-btn:hover {
+    border-color: rgba(99, 102, 241, 0.45);
+    color: var(--text-primary);
+    background: rgba(99, 102, 241, 0.08);
+}
+
+.analytics-date-preset-btn.active {
+    border-color: var(--accent);
+    color: white;
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.92), rgba(139, 92, 246, 0.92));
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.18);
+}
+
 .btn-primary,
 .btn-secondary {
     width: 100%;
@@ -1372,6 +1410,10 @@ input[type="text"]:focus {
     .toggle-buttons {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .analytics-date-presets-grid {
+        grid-template-columns: 1fr;
     }
 
     .analytics-workbench {

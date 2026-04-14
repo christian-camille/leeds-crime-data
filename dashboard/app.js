@@ -50,6 +50,20 @@ const MONTHS = [
     'July', 'August', 'September', 'October', 'November', 'December'
 ];
 
+const ANALYTICS_DATE_PRESETS = [3, 6, 12, 24, 60];
+
+const ANALYTICS_DATE_PRESET_MARKUP = `
+    <label>Quick Range</label>
+    <div class="analytics-date-presets-grid" aria-label="Analytics date presets">
+        <button class="analytics-date-preset-btn" type="button" data-preset-months="3">Last 3 Months</button>
+        <button class="analytics-date-preset-btn" type="button" data-preset-months="6">Last 6 Months</button>
+        <button class="analytics-date-preset-btn" type="button" data-preset-months="12">Last 12 Months</button>
+        <button class="analytics-date-preset-btn" type="button" data-preset-months="24">Last 2 Years</button>
+        <button class="analytics-date-preset-btn" type="button" data-preset-months="60">Last 5 Years</button>
+        <button class="analytics-date-preset-btn" type="button" data-preset-months="all">All</button>
+    </div>
+`;
+
 let totalMonths = 0;
 let minDateTimestamp = 0;
 let intensitySlider;
@@ -156,6 +170,7 @@ function populateFilters() {
         crimeTypeSelect.appendChild(option);
     });
 
+    initAnalyticsDatePresets();
     initSlider();
     initIntensitySlider();
 }
@@ -490,7 +505,76 @@ function initSlider() {
         }
 
         tooltipContainer.innerHTML = `${formatMonthYear(v0)} — ${formatMonthYear(v1)}`;
+        updateAnalyticsDatePresetState(v0, v1);
         applyFilters();
+    });
+}
+
+function getAnalyticsPresetStartIndex(durationMonths) {
+    return Math.max(0, totalMonths - durationMonths);
+}
+
+function ensureAnalyticsDatePresets() {
+    let presetsGroup = document.getElementById('analytics-date-presets-group');
+    if (presetsGroup) {
+        return presetsGroup;
+    }
+
+    const dateRangeGroup = document.getElementById('date-range-group');
+    if (!dateRangeGroup) {
+        return null;
+    }
+
+    presetsGroup = document.createElement('div');
+    presetsGroup.id = 'analytics-date-presets-group';
+    presetsGroup.className = 'control-group analytics-date-presets-group hidden';
+    presetsGroup.innerHTML = ANALYTICS_DATE_PRESET_MARKUP;
+    dateRangeGroup.parentNode.insertBefore(presetsGroup, dateRangeGroup);
+
+    return presetsGroup;
+}
+
+function applyAnalyticsDatePreset(durationMonths) {
+    const slider = document.getElementById('date-slider');
+    if (!slider || !slider.noUiSlider) {
+        return;
+    }
+
+    if (durationMonths === 'all') {
+        slider.noUiSlider.set([0, totalMonths - 1]);
+        return;
+    }
+
+    slider.noUiSlider.set([getAnalyticsPresetStartIndex(durationMonths), totalMonths - 1]);
+}
+
+function updateAnalyticsDatePresetState(startIndex, endIndex) {
+    ensureAnalyticsDatePresets();
+    const presetButtons = document.querySelectorAll('.analytics-date-preset-btn');
+    const activePresetMonths = ANALYTICS_DATE_PRESETS.find((durationMonths) => (
+        endIndex === totalMonths - 1 && startIndex === getAnalyticsPresetStartIndex(durationMonths)
+    ));
+
+    presetButtons.forEach((button) => {
+        const presetValue = button.dataset.presetMonths;
+        const isActive = presetValue === 'all'
+            ? startIndex === 0 && endIndex === totalMonths - 1
+            : Number(presetValue) === activePresetMonths;
+        button.classList.toggle('active', isActive);
+        button.setAttribute('aria-pressed', String(isActive));
+    });
+}
+
+function initAnalyticsDatePresets() {
+    ensureAnalyticsDatePresets();
+    const presetButtons = document.querySelectorAll('.analytics-date-preset-btn');
+
+    presetButtons.forEach((button) => {
+        button.setAttribute('aria-pressed', 'false');
+        button.addEventListener('click', () => {
+            const presetValue = button.dataset.presetMonths;
+            applyAnalyticsDatePreset(presetValue === 'all' ? 'all' : Number(presetValue));
+        });
     });
 }
 
@@ -1434,6 +1518,7 @@ function setMapMode(mode) {
     currentMapMode = mode;
 
     const dateRangeGroup = document.getElementById('date-range-group');
+    const analyticsDatePresets = ensureAnalyticsDatePresets();
     const intensityGroup = document.getElementById('intensity-group');
     const searchGroup = document.getElementById('search-group');
     const statsPanel = document.getElementById('stats-panel');
@@ -1452,6 +1537,9 @@ function setMapMode(mode) {
 
     mapElement.classList.toggle('hidden', mode === 'analytics');
     analyticsView.classList.toggle('hidden', mode !== 'analytics');
+    if (analyticsDatePresets) {
+        analyticsDatePresets.classList.toggle('hidden', mode !== 'analytics');
+    }
     mapElement.setAttribute('aria-hidden', String(mode === 'analytics'));
     analyticsView.setAttribute('aria-hidden', String(mode !== 'analytics'));
 

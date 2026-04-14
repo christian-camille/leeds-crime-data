@@ -13,7 +13,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css?v=2">
+    <link rel="stylesheet" href="styles.css?v=3">
 </head>
 
 <body>
@@ -86,6 +86,18 @@
                             <h4>Crime Breakdown</h4>
                             <div id="postcode-breakdown"></div>
                         </div>
+                    </div>
+                </div>
+
+                <div class="control-group analytics-date-presets-group hidden" id="analytics-date-presets-group">
+                    <label>Quick Range</label>
+                    <div class="analytics-date-presets-grid" aria-label="Analytics date presets">
+                        <button class="analytics-date-preset-btn" type="button" data-preset-months="3">Last 3 Months</button>
+                        <button class="analytics-date-preset-btn" type="button" data-preset-months="6">Last 6 Months</button>
+                        <button class="analytics-date-preset-btn" type="button" data-preset-months="12">Last 12 Months</button>
+                        <button class="analytics-date-preset-btn" type="button" data-preset-months="24">Last 2 Years</button>
+                        <button class="analytics-date-preset-btn" type="button" data-preset-months="60">Last 5 Years</button>
+                        <button class="analytics-date-preset-btn" type="button" data-preset-months="all">All</button>
                     </div>
                 </div>
 
@@ -268,7 +280,7 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.7.1/nouislider.min.js"></script>
-    <script src="app.js?v=3"></script>
+    <script src="app.js?v=4"></script>
 </body>
 
 </html>
