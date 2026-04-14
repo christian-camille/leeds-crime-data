@@ -935,12 +935,24 @@ function buildTrendChartMarkup(monthKeys, monthValues) {
 
     return `
         <div class="analytics-chart-content">
+            <div class="analytics-trend-tooltip hidden" aria-hidden="true"></div>
             <svg class="analytics-trend-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="Monthly crime trend chart">
                 <line class="analytics-trend-grid" x1="${padding.left}" y1="${padding.top + innerHeight}" x2="${padding.left + innerWidth}" y2="${padding.top + innerHeight}"></line>
                 <line class="analytics-trend-grid" x1="${padding.left}" y1="${padding.top + innerHeight * 0.5}" x2="${padding.left + innerWidth}" y2="${padding.top + innerHeight * 0.5}"></line>
                 <polygon class="analytics-trend-area" points="${areaPoints}"></polygon>
                 <polyline class="analytics-trend-line" points="${linePoints}"></polyline>
-                ${points.map((point) => `<circle class="analytics-trend-dot" cx="${point.x}" cy="${point.y}" r="4"></circle>`).join('')}
+                ${points.map((point) => `
+                    <circle
+                        class="analytics-trend-dot"
+                        cx="${point.x}"
+                        cy="${point.y}"
+                        r="4"
+                        tabindex="0"
+                        data-label="${escapeHtml(formatMonthKeyShort(point.label))}"
+                        data-value="${point.value.toLocaleString()}"
+                        aria-label="${escapeHtml(formatMonthKeyShort(point.label))}: ${point.value.toLocaleString()} crimes">
+                    </circle>
+                `).join('')}
                 ${labelIndexes.map((index) => {
                     const point = points[index];
                     return `<text class="analytics-axis-label" x="${point.x}" y="${height - 10}" text-anchor="middle">${formatMonthKeyShort(point.label)}</text>`;
@@ -955,6 +967,46 @@ function buildTrendChartMarkup(monthKeys, monthValues) {
     `;
 }
 
+function bindAnalyticsTrendTooltip(container) {
+    const chartContent = container.querySelector('.analytics-chart-content');
+    const tooltip = container.querySelector('.analytics-trend-tooltip');
+    const dots = container.querySelectorAll('.analytics-trend-dot');
+
+    if (!chartContent || !tooltip || !dots.length) {
+        return;
+    }
+
+    const showTooltip = (dot, clientX, clientY) => {
+        const contentRect = chartContent.getBoundingClientRect();
+        const dotRect = dot.getBoundingClientRect();
+        const offsetX = clientX ?? (dotRect.left + dotRect.width / 2);
+        const offsetY = clientY ?? dotRect.top;
+
+        tooltip.textContent = `${dot.dataset.label}: ${dot.dataset.value} crimes`;
+        tooltip.classList.remove('hidden');
+        tooltip.setAttribute('aria-hidden', 'false');
+
+        const left = Math.min(Math.max(offsetX - contentRect.left, 44), Math.max(contentRect.width - 44, 44));
+        const top = Math.max(offsetY - contentRect.top - 12, 12);
+
+        tooltip.style.left = `${left}px`;
+        tooltip.style.top = `${top}px`;
+    };
+
+    const hideTooltip = () => {
+        tooltip.classList.add('hidden');
+        tooltip.setAttribute('aria-hidden', 'true');
+    };
+
+    dots.forEach((dot) => {
+        dot.addEventListener('mouseenter', (event) => showTooltip(dot, event.clientX, event.clientY));
+        dot.addEventListener('mousemove', (event) => showTooltip(dot, event.clientX, event.clientY));
+        dot.addEventListener('mouseleave', hideTooltip);
+        dot.addEventListener('focus', () => showTooltip(dot));
+        dot.addEventListener('blur', hideTooltip);
+    });
+}
+
 function renderAnalyticsTrend(filteredResults) {
     const container = document.getElementById('analytics-trend-chart');
     const monthKeys = getMonthKeysInRange(filteredResults.params);
@@ -966,6 +1018,7 @@ function renderAnalyticsTrend(filteredResults) {
     }
 
     container.innerHTML = buildTrendChartMarkup(monthKeys, monthValues);
+    bindAnalyticsTrendTooltip(container);
 }
 
 function renderAnalyticsCrimeRanking(filteredResults) {
