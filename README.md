@@ -100,17 +100,17 @@ python src/main.py
 
 If you prefer to run the stages manually:
 
-**0. Download Historical Data** Downloads archived crime data from Police.uk (required for historical analysis). For full history, backfill from Jan-2017 using compact mode (minimum snapshot archives).
+**0. Download Historical Data** Downloads archived crime data from Police.uk (required for historical analysis). For full history, request coverage from Jan-2017 using compact mode (minimum snapshot archives whose contents reach back to that month).
 
 ```bash
-python src/download_archives.py --since 2017-01
+python src/download_archives.py --cover-since 2017-01
 
 ```
 
 Optional (slower, more redundant downloads):
 
 ```bash
-python src/download_archives.py --since 2017-01 --all-months
+python src/download_archives.py --cover-since 2017-01 --all-months
 
 ```
 

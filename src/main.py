@@ -23,7 +23,7 @@ from process_api_data import process_api_data
 from merge_datasets import merge_datasets
 from enrich_data import enrich_data
 from patch_enrichment import patch_enrichment
-from download_archives import download_since
+from download_archives import download_covering_since
 from fetch_wards import fetch_wards
 from prepare_dashboard_data import prepare_dashboard_data
 
@@ -119,8 +119,8 @@ PIPELINE_STEPS = [
     {
         "num": 0,
         "name": "Download Archive Data",
-        "desc": "Downloads historical crime data archives from Police.uk (from 2018-01 onward)",
-        "func": download_since,
+        "desc": "Downloads historical archive snapshots covering data from 2018-01 onward",
+        "func": download_covering_since,
         "args": (2018, 1)
     },
     {

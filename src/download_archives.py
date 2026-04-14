@@ -240,8 +240,8 @@ def download_latest() -> bool:
         return False
 
 
-def download_since(start_year: int, start_month: int, all_months: bool = False, **kwargs) -> int:
-    """Download archives from start month through latest (compact by default)."""
+def download_covering_since(start_year: int, start_month: int, all_months: bool = False, **kwargs) -> int:
+    """Download archives covering the requested start month through latest."""
     requested_start = (start_year, start_month)
     available = get_available_archive_months()
 
@@ -261,14 +261,13 @@ def download_since(start_year: int, start_month: int, all_months: bool = False, 
     else:
         mode_text = "monthly"
 
-    first_year, first_month = target_months[0]
     last_year, last_month = target_months[-1]
     print(
-        f"📦 Found {len(target_months)} archive(s) in {mode_text} mode from "
-        f"{first_year:04d}-{first_month:02d} to {last_year:04d}-{last_month:02d}."
+        f"📦 Found {len(target_months)} archive(s) in {mode_text} mode covering "
+        f"{start_year:04d}-{start_month:02d} to {last_year:04d}-{last_month:02d}."
     )
     planned_list = ", ".join(f"{year:04d}-{month:02d}" for year, month in target_months)
-    print(f"🗂 Planned archives: {planned_list}")
+    print(f"🗂 Planned archive files: {planned_list}")
 
     success_count = 0
     for year, month in target_months:
@@ -276,6 +275,11 @@ def download_since(start_year: int, start_month: int, all_months: bool = False, 
             success_count += 1
 
     return success_count
+
+
+def download_since(start_year: int, start_month: int, all_months: bool = False, **kwargs) -> int:
+    """Backward-compatible alias for download_covering_since."""
+    return download_covering_since(start_year, start_month, all_months=all_months, **kwargs)
 
 
 def download_range(start_year: int, start_month: int, end_year: int, end_month: int, **kwargs) -> int:
@@ -319,8 +323,8 @@ Examples:
   python download_archives.py --latest              # Download latest archive
   python download_archives.py --month 2024-01       # Download January 2024
   python download_archives.py --range 2023-01 2023-12  # Download all of 2023
-    python download_archives.py --since 2018-01       # Download minimal snapshots from Jan 2018
-    python download_archives.py --since 2018-01 --all-months  # Download every month from Jan 2018
+        python download_archives.py --cover-since 2018-01       # Download minimal snapshots covering Jan 2018 onward
+        python download_archives.py --cover-since 2018-01 --all-months  # Download every month from Jan 2018 onward
   python download_archives.py --month 2024-06 --no-verify  # Skip MD5 check
         """
     )
@@ -330,13 +334,19 @@ Examples:
     group.add_argument("--month", type=str, help="Download specific month (YYYY-MM)")
     group.add_argument("--range", nargs=2, metavar=("START", "END"),
                        help="Download range of months (YYYY-MM YYYY-MM)")
-    group.add_argument("--since", type=str, metavar="START",
-                       help="Download all available archives from start month (YYYY-MM) to latest")
+    group.add_argument(
+        "--cover-since",
+        "--since",
+        dest="cover_since",
+        type=str,
+        metavar="START",
+        help="Download archives whose coverage reaches back to START (YYYY-MM); --since is kept as an alias",
+    )
 
     parser.add_argument("--no-verify", action="store_true", help="Skip MD5 checksum verification")
     parser.add_argument("--force", action="store_true", help="Force re-download existing files")
     parser.add_argument("--all-months", action="store_true",
-                        help="With --since, download every monthly archive (not compact mode)")
+                        help="With --cover-since, download every monthly archive instead of compact snapshots")
 
     args = parser.parse_args()
 
@@ -367,9 +377,9 @@ Examples:
         print("=" * 60)
         sys.exit(0 if count > 0 else 1)
 
-    elif args.since:
-        start_year, start_month = parse_date(args.since)
-        count = download_since(
+    elif args.cover_since:
+        start_year, start_month = parse_date(args.cover_since)
+        count = download_covering_since(
             start_year,
             start_month,
             all_months=args.all_months,
