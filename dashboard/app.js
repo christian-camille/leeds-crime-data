@@ -1618,6 +1618,39 @@ viewWardsBtn.addEventListener('click', () => setMapMode('wards'));
 viewSearchBtn.addEventListener('click', () => setMapMode('search'));
 viewAnalyticsBtn.addEventListener('click', () => setMapMode('analytics'));
 
+function restoreDateRangeGroup() {
+    const dateRangeGroup = document.getElementById('date-range-group');
+    const analyticsDatePresets = document.getElementById('analytics-date-presets-group');
+    const intensityGroup = document.getElementById('intensity-group');
+
+    if (!dateRangeGroup || !intensityGroup || dateRangeGroup.parentNode === intensityGroup.parentNode && dateRangeGroup.nextElementSibling === intensityGroup) {
+        return;
+    }
+
+    if (analyticsDatePresets && analyticsDatePresets.parentNode === intensityGroup.parentNode) {
+        analyticsDatePresets.insertAdjacentElement('afterend', dateRangeGroup);
+        return;
+    }
+
+    intensityGroup.parentNode.insertBefore(dateRangeGroup, intensityGroup);
+}
+
+function placeDateRangeGroupForSearch() {
+    const dateRangeGroup = document.getElementById('date-range-group');
+    const searchResults = document.getElementById('postcode-results');
+    const searchGroup = document.getElementById('search-group');
+
+    if (!dateRangeGroup || !searchResults || !searchGroup) {
+        return;
+    }
+
+    if (dateRangeGroup.parentNode === searchGroup && dateRangeGroup.nextElementSibling === searchResults) {
+        return;
+    }
+
+    searchGroup.insertBefore(dateRangeGroup, searchResults);
+}
+
 function setMapMode(mode) {
     if (currentMapMode === mode) return;
     currentMapMode = mode;
@@ -1656,6 +1689,12 @@ function setMapMode(mode) {
     if (searchCircle) {
         map.removeLayer(searchCircle);
         searchCircle = null;
+    }
+
+    if (mode === 'search') {
+        placeDateRangeGroupForSearch();
+    } else {
+        restoreDateRangeGroup();
     }
 
     if (mode === 'heatmap') {
