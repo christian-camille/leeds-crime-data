@@ -4,22 +4,29 @@
 [![View Dashboard](https://img.shields.io/badge/Live_Dashboard-FF4B4B?style=for-the-badge&logo=leaflet&logoColor=white)](https://christian-camille.github.io/leeds-crime-data/)
 [![Build Status](https://img.shields.io/badge/Build-Passing-brightgreen?style=for-the-badge)](https://github.com/christian-camille/leeds-crime-data/actions)
 
-A comprehensive geospatial intelligence platform for the Leeds metropolitan area. This project combines a robust ETL pipeline with an interactive web dashboard to visualise over **1,000,000 crime records** spanning **2017–2025**. You can explore the data interactively on the [Live Dashboard](https://christian-camille.github.io/leeds-crime-data/). It integrates data from the **UK Police API**, **Leeds City Council**, and **ONS**, providing hyper-local insights through heatmaps, ward-level choropleths, and temporal trend analysis.
+A comprehensive geospatial intelligence platform for the Leeds metropolitan area. This project combines a robust ETL pipeline with an interactive web dashboard to visualise over **1,000,000 crime records** spanning **2017–2025**. You can explore the data interactively on the [Live Dashboard](https://christian-camille.github.io/leeds-crime-data/). It integrates data from the **UK Police API**, **Leeds City Council**, and **ONS**, providing hyper-local insights through heatmaps, ward-level choropleths, postcode-radius search, and a dedicated analytics workspace for trend and seasonality analysis.
 
 <p align="center">
-  <img src="assets/dashboard.png" width="600" alt="Leeds Crime Dashboard" border="1">
+  <img src="assets/Heatmap.png" width="600" alt="Leeds Crime Dashboard" border="1">
   <br>
-  <span style="font-size: 16px; font-weight: bold;">Leeds Crime Dashboard</span>
+  <span style="font-size: 16px; font-weight: bold;">Crime Heat Map</span>
 </p>
 
 ## Project Highlights
 
-- **Interactive Dashboard**: A responsive web application featuring dual-mode visualisation (Heatmap & Ward Choropleth), dynamic filtering, and real-time statistics.
-- **Postcode Radius Search**: Static postcode lookup that shows aggregated local crime totals and crime-type breakdowns within a 100m radius.
+- **Interactive Dashboard**: A responsive web application with four modes: Heatmap, Ward Choropleth, Postcode Search, and a dedicated Analytics view.
+- **Analytics Workbench**: Filter-responsive KPI cards, monthly trend charts, crime-type rankings, seasonal heatmaps, and sortable ward comparisons for deeper exploration beyond the map.
+- **Postcode Radius Search**: Static postcode lookup with an adjustable **100m to 1km** radius, aggregated local crime totals, and crime-type breakdowns.
 - **Robust ETL Pipeline**: Automated ingestion system that handles incremental updates, rate limiting, and historical data merging.
 - **Geospatial Intelligence**: Precise point-in-polygon validation (`Shapely`) and batch geocoding (`postcodes.io`) to enrich every crime record with administrative boundaries.
 - **Data Normalisation**: Unified schema across disparate sources (API vs Archive) to ensure consistent categorisation and analysis.
 - **Optimised Performance**: Pre-aggregated data structures (`JSON`) to ensure sub-second rendering of over one million data points in the browser.
+
+<p align="center">
+  <img src="assets/Analytics.png" width="600" alt="Leeds Crime Dashboard" border="1">
+  <br>
+  <span style="font-size: 16px; font-weight: bold;">Analytics Workbench</span>
+</p>
 
 ## Data Pipeline
 
@@ -152,15 +159,31 @@ python src/prepare_dashboard_data.py
 
 ## Interactive Dashboard
 
-The dashboard is the centrepiece of this project, offering a high-performance interface for exploring 7+ years of crime data. Built with **Leaflet.js** and **noUiSlider**, it leverages optimised GeoJSON layers to deliver smooth transitions between granular heatmaps and administrative ward views, all within the browser.
+The dashboard is the centrepiece of this project, offering a high-performance interface for exploring 7+ years of crime data. Built with **Leaflet.js** and **noUiSlider**, it combines interactive mapping with a dedicated analytics workbench, allowing you to move from spatial exploration into trend and comparison analysis without leaving the browser.
 
 ### Features
-* **Heatmap Visualisation**: Dynamic density map of crime hotspots.
-* **Temporal Filtering**: Analyse trends over specific years and months.
-* **Category Filtering**: Isolate specific crime types (e.g., "Burglary").
-* **Choropleth Map**: Toggle between heatmap and ward-level density views.
-* **Ward Breakdown**: Top 5 wards by crime count for the selected period.
-* **Postcode Search**: Search a Leeds postcode and see aggregated crimes within 100m, with a type breakdown and map overlay.
+* **Four dashboard modes**: Switch between **Heatmap**, **Wards**, **Search**, and **Analytics** views depending on whether you want spatial context or analytical detail.
+* **Heatmap Visualisation**: Dynamic density mapping of crime hotspots with adjustable intensity and sensitivity controls.
+* **Ward Choropleth**: Compare total crime volumes across Leeds wards, with supporting ward ranking panels and detail modals.
+* **Temporal Filtering**: Analyse specific year and month windows using a dual-handle range slider.
+* **Category Filtering**: Isolate specific crime types such as Burglary or Violence and sexual offences.
+* **Postcode Search**: Search a Leeds postcode, set a **100m to 1km** radius, and view aggregated local totals, top crime type, and a crime breakdown with a map overlay.
+* **Quick Analytics Presets**: Jump straight to the last **3 months**, **6 months**, **12 months**, **2 years**, **5 years**, or the full historical range.
+* **Analytics Summary Cards**: See total crimes, active filter context, leading crime category, and city-centre share for the selected window.
+* **Monthly Trend Chart**: Track how crime levels rise and fall over time, including peak-month and latest-month summaries.
+* **Crime Type Ranking Bars**: Compare the top crime categories by absolute volume and percentage share.
+* **City Centre vs Outer Leeds Comparison**: Split the filtered total between city-centre activity and the rest of Leeds.
+* **Seasonality Matrix**: Identify recurring monthly patterns across the top crime categories with a compact heatmap grid.
+* **Sortable Ward Ranking Table**: Rank wards by total crimes, share of citywide crimes, or change in average monthly crime between the first and second half of the selected range.
+
+### Analytics View
+
+The new **Analytics** view turns the dashboard into a lightweight intelligence workbench. All visualisations respond to the same crime-type and date filters, so you can move from a broad citywide overview into more focused questions such as:
+
+* Which offence category dominates the selected period?
+* Are current crime levels concentrated in the city centre or spread across outer Leeds?
+* Which wards are increasing or cooling off relative to the first half of the selected date range?
+* Do certain crime categories show consistent seasonal peaks?
 
 ### Running the Dashboard
 
@@ -238,14 +261,15 @@ pytest tests/ -v
 
 The pipeline produces two primary artifacts:
 1. **`data/processed/leeds_street_combined.csv`**: The master dataset containing **1,000,000+ records** (covering **Jan 2017 to Dec 2025**) with 100% Ward/Postcode coverage, ideal for deep analysis (EDA) or ML modelling.
-2. **`dashboard/data/crime_data.json`**: An optimised, minified structure containing pre-aggregated indices and spatial coordinates, powering the real-time web dashboard.
+2. **`dashboard/data/crime_data.json`**: An optimised, minified structure containing pre-aggregated indices and spatial coordinates, powering the real-time dashboard across map, ward, and analytics views.
 3. **`dashboard/data/postcode_search.json`**: A compact search dataset containing exact aggregated crime points for postcode-radius lookups in the static dashboard.
 
 ## Postcode Search Notes
 
-The postcode search stays compatible with static hosting. The browser looks up the entered postcode via **postcodes.io**, then filters the local `postcode_search.json` dataset client-side to compute crimes within a **100m radius**.
+The postcode search stays compatible with static hosting. The browser looks up the entered postcode via **postcodes.io**, then filters the local `postcode_search.json` dataset client-side to compute crimes within a configurable **100m to 1km radius**.
 
 - Results are **aggregated only**: total crimes plus a crime-type breakdown for the active dashboard filters.
+- The search radius is adjustable in **100m steps**, making it easier to compare immediate street-level activity against a wider local catchment.
 - The search currently supports **Leeds postcodes only**.
 - The feature depends on `postcodes.io` being reachable from the browser.
 
