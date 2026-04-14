@@ -889,6 +889,25 @@ function formatMonthKeyShort(monthKey) {
     return `${MONTHS[month - 1].substring(0, 3)} ${String(year).slice(-2)}`;
 }
 
+function getWardTrendLabel(params) {
+    const monthCount = getMonthKeysInRange(params).length;
+    if (monthCount < 2) {
+        return 'Avg. Crime +/-';
+    }
+
+    return 'Avg. Crime +/-';
+}
+
+function getWardTrendDescription(params) {
+    const monthCount = getMonthKeysInRange(params).length;
+
+    if (monthCount < 2) {
+        return 'Trend is unavailable when the selected date range contains fewer than 2 months.';
+    }
+
+    return 'Change in average monthly crimes between the first half and second half of the selected date range.';
+}
+
 function buildTrendChartMarkup(monthKeys, monthValues) {
     const width = 720;
     const height = 250;
@@ -1075,17 +1094,36 @@ function renderAnalyticsSeasonalityMatrix(filteredResults) {
 
 function getWardTrendData(monthlyTotals, params) {
     const monthKeys = getMonthKeysInRange(params);
-    const latestKeys = monthKeys.slice(-3);
-    const previousKeys = monthKeys.slice(-6, -3);
-
-    const latestTotal = latestKeys.reduce((sum, key) => sum + (monthlyTotals[key] || 0), 0);
-    const previousTotal = previousKeys.reduce((sum, key) => sum + (monthlyTotals[key] || 0), 0);
-
-    if (previousTotal === 0) {
-        return latestTotal > 0 ? 100 : 0;
+    if (monthKeys.length < 2) {
+        return {
+            value: null,
+            hasComparison: false,
+            isNewActivity: false
+        };
     }
 
-    return ((latestTotal - previousTotal) / previousTotal) * 100;
+    const splitIndex = Math.floor(monthKeys.length / 2);
+    const firstHalfKeys = monthKeys.slice(0, splitIndex);
+    const secondHalfKeys = monthKeys.slice(splitIndex);
+
+    const firstHalfTotal = firstHalfKeys.reduce((sum, key) => sum + (monthlyTotals[key] || 0), 0);
+    const secondHalfTotal = secondHalfKeys.reduce((sum, key) => sum + (monthlyTotals[key] || 0), 0);
+    const firstHalfAverage = firstHalfTotal / firstHalfKeys.length;
+    const secondHalfAverage = secondHalfTotal / secondHalfKeys.length;
+
+    if (firstHalfAverage === 0) {
+        return {
+            value: secondHalfAverage > 0 ? 100 : 0,
+            hasComparison: secondHalfAverage > 0,
+            isNewActivity: secondHalfAverage > 0
+        };
+    }
+
+    return {
+        value: ((secondHalfAverage - firstHalfAverage) / firstHalfAverage) * 100,
+        hasComparison: true,
+        isNewActivity: false
+    };
 }
 
 function getWardTableRows(filteredResults) {
@@ -1115,6 +1153,12 @@ function sortWardTableRows(rows) {
             return left.ward.localeCompare(right.ward);
         }
 
+        if (sortKey === 'trend') {
+            const leftValue = left.trend.value ?? Number.NEGATIVE_INFINITY;
+            const rightValue = right.trend.value ?? Number.NEGATIVE_INFINITY;
+            return leftValue - rightValue;
+        }
+
         return left[sortKey] - right[sortKey];
     });
 
@@ -1126,12 +1170,17 @@ function sortWardTableRows(rows) {
 }
 
 function getTrendClass(trend) {
+    if (trend === null || trend === undefined) return 'analytics-trend-neutral';
     if (trend > 0.1) return 'analytics-trend-negative';
     if (trend < -0.1) return 'analytics-trend-positive';
     return 'analytics-trend-neutral';
 }
 
 function formatTrend(trend) {
+    if (trend === null || trend === undefined) {
+        return 'N/A';
+    }
+
     if (Math.abs(trend) < 0.1) {
         return 'Flat';
     }
@@ -1158,6 +1207,8 @@ function setAnalyticsWardTableSort(key) {
 function renderAnalyticsWardTable(filteredResults) {
     const container = document.getElementById('analytics-ward-table');
     const rows = getWardTableRows(filteredResults);
+    const trendLabel = getWardTrendLabel(filteredResults.params);
+    const trendDescription = getWardTrendDescription(filteredResults.params);
 
     if (!rows.length || !filteredResults.totalCrimes) {
         container.innerHTML = '<div class="analytics-empty-state">Ward rankings will appear once the current filters return crime data.</div>';
@@ -1172,17 +1223,18 @@ function renderAnalyticsWardTable(filteredResults) {
                 <button type="button" data-sort-key="ward" aria-label="Sort ward table by ward name. Current direction ${analyticsWardTableSort.key === 'ward' ? analyticsWardTableSort.direction : 'none'}">Ward <span class="analytics-table-sort-indicator">${getWardSortIndicator('ward')}</span></button>
                 <button type="button" data-sort-key="total" aria-label="Sort ward table by total crimes. Current direction ${analyticsWardTableSort.key === 'total' ? analyticsWardTableSort.direction : 'none'}">Total <span class="analytics-table-sort-indicator">${getWardSortIndicator('total')}</span></button>
                 <button type="button" data-sort-key="share" aria-label="Sort ward table by percentage share. Current direction ${analyticsWardTableSort.key === 'share' ? analyticsWardTableSort.direction : 'none'}">Share <span class="analytics-table-sort-indicator">${getWardSortIndicator('share')}</span></button>
-                <button type="button" data-sort-key="trend" aria-label="Sort ward table by recent trend. Current direction ${analyticsWardTableSort.key === 'trend' ? analyticsWardTableSort.direction : 'none'}">Trend <span class="analytics-table-sort-indicator">${getWardSortIndicator('trend')}</span></button>
+                <button type="button" data-sort-key="trend" aria-label="Sort ward table by change in average monthly crimes between the first and second half of the selected date range. Current direction ${analyticsWardTableSort.key === 'trend' ? analyticsWardTableSort.direction : 'none'}">${trendLabel} <span class="analytics-table-sort-indicator">${getWardSortIndicator('trend')}</span></button>
             </div>
             ${sortedRows.map((row) => `
                 <div class="analytics-table-row">
                     <span title="${escapeHtml(row.ward)}">${escapeHtml(row.ward)}</span>
                     <span>${row.total.toLocaleString()}</span>
                     <span>${row.share.toFixed(1)}%</span>
-                    <span class="${getTrendClass(row.trend)}">${formatTrend(row.trend)}</span>
+                    <span class="${getTrendClass(row.trend.value)}" title="${row.trend.isNewActivity ? 'No crimes in the first half of the selected range; activity appears in the second half.' : trendDescription}">${row.trend.isNewActivity ? 'New' : formatTrend(row.trend.value)}</span>
                 </div>
             `).join('')}
         </div>
+        <p class="analytics-table-caption">${trendDescription}</p>
     `;
 
     container.querySelectorAll('[data-sort-key]').forEach((button) => {

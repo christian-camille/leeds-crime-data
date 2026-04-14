@@ -1033,6 +1033,7 @@ input[type="text"]:focus {
     overflow: hidden;
     border: 1px solid rgba(255, 255, 255, 0.06);
     min-width: 540px;
+    margin-bottom: 10px;
 }
 
 .analytics-matrix-placeholder {
@@ -1097,6 +1098,7 @@ input[type="text"]:focus {
     font: inherit;
     text-transform: inherit;
     letter-spacing: inherit;
+    white-space: nowrap;
     cursor: pointer;
 }
 
@@ -1114,6 +1116,12 @@ input[type="text"]:focus {
 }
 
 .analytics-trend-neutral {
+    color: var(--text-secondary);
+}
+
+.analytics-table-caption {
+    font-size: 0.78rem;
+    line-height: 1.45;
     color: var(--text-secondary);
 }
 
