@@ -2,6 +2,7 @@ import argparse
 import json
 import os
 import time
+from datetime import datetime
 from pathlib import Path
 
 import numpy as np
@@ -14,6 +15,17 @@ RETRYABLE_STATUS_CODES = {429, 500, 502, 503, 504}
 DEFAULT_TIMEOUT_SECONDS = 10
 DEFAULT_MAX_RETRIES = 3
 DEFAULT_RETRY_DELAY_SECONDS = 2
+
+
+def _parse_month_arg(value: str) -> str:
+    try:
+        parsed = datetime.strptime(value, "%Y-%m")
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(
+            f"Invalid month '{value}'. Use YYYY-MM format, for example 2022-11."
+        ) from exc
+
+    return parsed.strftime("%Y-%m")
 
 
 def _get_month_paths(output_dir: str, date: str) -> dict[str, Path]:
@@ -323,8 +335,8 @@ def fetch_crime_data(
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Fetch Leeds crime data from the UK Police API")
-    parser.add_argument("--start", default="2022-11", help="Start month in YYYY-MM format")
-    parser.add_argument("--end", default="2025-12", help="End month in YYYY-MM format")
+    parser.add_argument("--start", type=_parse_month_arg, default="2022-11", help="Start month in YYYY-MM format")
+    parser.add_argument("--end", type=_parse_month_arg, default="2025-12", help="End month in YYYY-MM format")
     parser.add_argument("--output-dir", default="data/raw", help="Directory for raw monthly CSV output")
     parser.add_argument(
         "--repair-existing",
@@ -334,7 +346,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--max-retries", type=int, default=DEFAULT_MAX_RETRIES, help="Retries per grid request for transient failures")
     parser.add_argument("--timeout", type=int, default=DEFAULT_TIMEOUT_SECONDS, help="Request timeout in seconds")
     parser.add_argument("--retry-delay", type=int, default=DEFAULT_RETRY_DELAY_SECONDS, help="Base delay in seconds for retry backoff")
-    return parser.parse_args()
+    args = parser.parse_args()
+
+    if args.start > args.end:
+        parser.error(f"--start must be earlier than or equal to --end. Got {args.start} > {args.end}.")
+
+    return args
 
 if __name__ == "__main__":
     args = parse_args()

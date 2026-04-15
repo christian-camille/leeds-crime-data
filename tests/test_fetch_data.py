@@ -1,4 +1,5 @@
 import json
+import sys
 
 import pandas as pd
 import requests
@@ -152,3 +153,25 @@ def test_fetch_crime_data_repairs_existing_month_without_checkpoint(tmp_path, mo
     result = pd.read_csv(output_file)
     assert sorted(result["id"].tolist()) == [1, 2]
     assert calls == [(53.7, -1.8, "2024-04"), (53.7, -1.78, "2024-04")]
+
+
+def test_parse_args_rejects_invalid_month(monkeypatch):
+    monkeypatch.setattr(sys, "argv", ["fetch_data.py", "--start", "22-11"])
+
+    try:
+        fetch_data.parse_args()
+    except SystemExit as exc:
+        assert exc.code == 2
+    else:
+        raise AssertionError("Expected parse_args to exit for invalid month input")
+
+
+def test_parse_args_rejects_reversed_range(monkeypatch):
+    monkeypatch.setattr(sys, "argv", ["fetch_data.py", "--start", "2025-12", "--end", "2022-11"])
+
+    try:
+        fetch_data.parse_args()
+    except SystemExit as exc:
+        assert exc.code == 2
+    else:
+        raise AssertionError("Expected parse_args to exit for reversed date range")
