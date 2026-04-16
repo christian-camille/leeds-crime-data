@@ -28,6 +28,13 @@ def _parse_month_arg(value: str) -> str:
     return parsed.strftime("%Y-%m")
 
 
+def _month_label_from_checkpoint(meta_path: Path) -> str:
+    prefix = "leeds_crime_"
+    if meta_path.stem.startswith(prefix):
+        return meta_path.stem[len(prefix):].replace("_", "-")
+    return meta_path.stem
+
+
 def _get_month_paths(output_dir: str, date: str) -> dict[str, Path]:
     base_name = f"leeds_crime_{date.replace('-', '_')}"
     state_dir = Path(output_dir) / CHECKPOINT_DIRNAME
@@ -176,6 +183,59 @@ def _build_point_indexes(total_points: int, checkpoint: dict, output_exists: boo
 
     remaining_points = list(range(next_point_index, total_points)) if not output_exists else []
     return remaining_points + failed_points
+
+
+def detect_repair_needed(output_dir: str = "data/raw") -> tuple[list[dict[str, object]], list[str]]:
+    state_dir = Path(output_dir) / CHECKPOINT_DIRNAME
+    if not state_dir.exists():
+        return [], []
+
+    repairable: list[dict[str, object]] = []
+    malformed: list[str] = []
+
+    for meta_path in sorted(state_dir.glob("*.json")):
+        try:
+            checkpoint = _load_checkpoint(meta_path)
+        except (OSError, ValueError, json.JSONDecodeError) as exc:
+            malformed.append(f"{meta_path.name}: {exc}")
+            continue
+
+        failed_points = checkpoint.get("failed_points", [])
+        if not failed_points:
+            continue
+
+        repairable.append(
+            {
+                "month": _month_label_from_checkpoint(meta_path),
+                "status": checkpoint.get("status", "unknown"),
+                "failed_points": list(failed_points),
+                "failed_count": len(failed_points),
+            }
+        )
+
+    return repairable, malformed
+
+
+def report_repair_needed(output_dir: str = "data/raw") -> int:
+    repairable, malformed = detect_repair_needed(output_dir)
+
+    if malformed:
+        print("Malformed checkpoint files detected:")
+        for item in malformed:
+            print(f"  - {item}")
+        return 1
+
+    print("Repair gap scan uses checkpoint metadata only; legacy completed CSVs without checkpoint gaps are not inferred.")
+
+    if not repairable:
+        print("No checkpoint-tracked months currently need repair.")
+        return 0
+
+    print(f"Found {len(repairable)} month(s) with repairable grid-point gaps:")
+    for item in repairable:
+        print(f"  - {item['month']}: {item['failed_count']} failed grid point(s) [{item['status']}]")
+
+    return 0
 
 def fetch_crime_data(
     start_date,
@@ -339,6 +399,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--end", type=_parse_month_arg, default="2025-12", help="End month in YYYY-MM format")
     parser.add_argument("--output-dir", default="data/raw", help="Directory for raw monthly CSV output")
     parser.add_argument(
+        "--detect-repair-needed",
+        action="store_true",
+        help="Report months with checkpoint-tracked failed grid points and exit without fetching",
+    )
+    parser.add_argument(
         "--repair-existing",
         action="store_true",
         help="Revisit existing monthly CSVs and merge in any records found for missing or previously failed grid points",
@@ -355,6 +420,9 @@ def parse_args() -> argparse.Namespace:
 
 if __name__ == "__main__":
     args = parse_args()
+    if args.detect_repair_needed:
+        raise SystemExit(report_repair_needed(args.output_dir))
+
     fetch_crime_data(
         args.start,
         args.end,

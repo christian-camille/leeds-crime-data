@@ -175,3 +175,41 @@ def test_parse_args_rejects_reversed_range(monkeypatch):
         assert exc.code == 2
     else:
         raise AssertionError("Expected parse_args to exit for reversed date range")
+
+
+def test_detect_repair_needed_returns_only_months_with_failed_points(tmp_path):
+    state_dir = tmp_path / fetch_data.CHECKPOINT_DIRNAME
+    state_dir.mkdir()
+
+    (state_dir / "leeds_crime_2024_01.json").write_text(
+        json.dumps({"status": "complete_with_gaps", "failed_points": [1, 9], "next_point_index": 364, "status_counts": {"200": 10}}),
+        encoding="utf-8",
+    )
+    (state_dir / "leeds_crime_2024_02.json").write_text(
+        json.dumps({"status": "unavailable", "failed_points": [], "next_point_index": 0, "status_counts": {"404": 1}}),
+        encoding="utf-8",
+    )
+
+    repairable, malformed = fetch_data.detect_repair_needed(str(tmp_path))
+
+    assert malformed == []
+    assert repairable == [
+        {
+            "month": "2024-01",
+            "status": "complete_with_gaps",
+            "failed_points": [1, 9],
+            "failed_count": 2,
+        }
+    ]
+
+
+def test_detect_repair_needed_reports_malformed_checkpoint(tmp_path):
+    state_dir = tmp_path / fetch_data.CHECKPOINT_DIRNAME
+    state_dir.mkdir()
+    (state_dir / "leeds_crime_2024_03.json").write_text("{not-json", encoding="utf-8")
+
+    repairable, malformed = fetch_data.detect_repair_needed(str(tmp_path))
+
+    assert repairable == []
+    assert len(malformed) == 1
+    assert malformed[0].startswith("leeds_crime_2024_03.json:")

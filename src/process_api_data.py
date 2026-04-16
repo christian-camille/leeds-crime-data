@@ -4,19 +4,21 @@ import os
 import glob
 import ast
 import json
+from pathlib import Path
 from shapely.geometry import shape, Point
 from shapely.prepared import prep
 from tqdm import tqdm
 
-RAW_DIR = "data/raw"
-OUTPUT_FILE = "data/processed/leeds_street_api_clean.csv"
+BASE_DIR = Path(__file__).resolve().parent.parent
+RAW_DIR = BASE_DIR / "data" / "raw"
+OUTPUT_FILE = BASE_DIR / "data" / "processed" / "leeds_street_api_clean.csv"
 LEEDS_BOUNDARY_URL = "https://nominatim.openstreetmap.org/search?q=Leeds,+West+Yorkshire,+United+Kingdom&polygon_geojson=1&format=json"
 LSOA_BOUNDARY_URL = "https://services1.arcgis.com/ESMARspQHYMw9BZ9/arcgis/rest/services/LSOA_Dec_2011_Boundaries_Generalised_Clipped_BGC_EW_V3/FeatureServer/0/query?where=LSOA11NM%20like%20%27Leeds%25%27&outFields=*&f=geojson"
-LSOA_FILE = "data/raw/leeds_lsoa_2011.geojson"
+LSOA_FILE = RAW_DIR / "leeds_lsoa_2011.geojson"
 
 def normalize_raw_data():
     print("Step 1: Loading and Normalizing Raw Data...")
-    raw_files = glob.glob(os.path.join(RAW_DIR, "*.csv"))
+    raw_files = glob.glob(str(RAW_DIR / "*.csv"))
     if not raw_files:
         print("No raw files found.")
         return None
@@ -137,9 +139,10 @@ def filter_leeds_boundary(df):
 def assign_lsoa(df):
     print("Step 3: Assigning LSOA Codes...")
     
-    if not os.path.exists(LSOA_FILE):
+    if not LSOA_FILE.exists():
         print("Downloading LSOA boundaries...")
         try:
+             LSOA_FILE.parent.mkdir(parents=True, exist_ok=True)
              resp = requests.get(LSOA_BOUNDARY_URL, timeout=30)
              resp.raise_for_status()
              with open(LSOA_FILE, 'wb') as f: f.write(resp.content)
@@ -202,6 +205,7 @@ def process_api_data():
     df = assign_lsoa(df)
     
     print(f"Saving {len(df)} records to {OUTPUT_FILE}...")
+    OUTPUT_FILE.parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(OUTPUT_FILE, index=False)
     print("Done.")
 
