@@ -130,6 +130,15 @@ python src/main.py --step 2
 
 The API fetcher now checkpoints progress per month in `data/raw/.fetch_state`, retries transient network failures automatically, and can resume interrupted months without restarting the whole grid scan.
 
+To check whether any checkpoint-tracked months currently need repair, run:
+
+```bash
+python src/fetch_data.py --detect-repair-needed
+
+```
+
+This detector is read-only and reports only months with tracked failed grid points in `data/raw/.fetch_state`. It does not infer gaps from older completed CSVs that were created before failed-point tracking existed.
+
 To repair already fetched months and recover records from missing grid points, run:
 
 ```bash
