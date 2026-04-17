@@ -50,6 +50,8 @@ A comprehensive geospatial intelligence platform for the Leeds metropolitan area
 | Polling District | Voting district code (e.g., "LWE") |
 | Outcome | Case outcome where available |
 
+> **Note on ward boundaries**: Ward names are assigned using current (post-2018) Leeds ward definitions for the entire dataset. Leeds redrew its ward boundaries in 2018, so pre-2018 records carry the modern ward name that covers their geographic location — not the name that was in use at the time. The data is internally consistent (each crime point maps to the polygon shown on the map), but pre-2018 ward totals should not be compared directly against official council statistics that used the earlier boundaries.
+
 
 ## Tech Stack
 

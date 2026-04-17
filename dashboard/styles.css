@@ -1613,6 +1613,14 @@ input[type="text"]:focus {
     color: #a78bfa;
 }
 
+.chart-caveat {
+    font-size: 0.75rem;
+    color: var(--text-muted, #9ca3af);
+    margin-top: 8px;
+    line-height: 1.4;
+    font-style: italic;
+}
+
 .toggle-buttons {
     display: flex;
     background: rgba(255, 255, 255, 0.1);
