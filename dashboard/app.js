@@ -98,9 +98,9 @@ async function init() {
         attributionControl: true
     }).setView([53.8, -1.55], 11);
 
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; <a href="https://carto.com/">CARTO</a> | Data: UK Police API',
-        maxZoom: 18
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors | Data: UK Police API',
+        maxZoom: 19
     }).addTo(map);
 
     try {
@@ -156,7 +156,7 @@ async function init() {
         console.error('Failed to load crime data:', error);
         document.getElementById('loading').innerHTML = `
             <p style="color: var(--danger);">Failed to load data: ${error.message}</p>
-            <p style="margin-top: 8px; color: #b3b3b3;">Tip: run <code>python -m http.server 8000</code> inside the <code>dashboard</code> folder.</p>
+            <p style="margin-top: 8px; color: #86868B;">Tip: run <code>python -m http.server 8000</code> inside the <code>dashboard</code> folder.</p>
         `;
     }
 }
@@ -328,18 +328,18 @@ function renderSearchOverlay(lat, lon) {
 
     searchMarker = L.circleMarker([lat, lon], {
         radius: 7,
-        color: '#f0f0f5',
+        color: '#FFFFFF',
         weight: 2,
-        fillColor: '#22c55e',
+        fillColor: '#007AFF',
         fillOpacity: 1
     }).addTo(map);
 
     searchCircle = L.circle([lat, lon], {
         radius: getSearchRadius(),
-        color: '#22c55e',
+        color: '#007AFF',
         weight: 2,
-        fillColor: '#22c55e',
-        fillOpacity: 0.12
+        fillColor: '#007AFF',
+        fillOpacity: 0.10
     }).addTo(map);
 
     const zoomLevel = getSearchRadius() <= 250 ? 16 : getSearchRadius() <= 500 ? 15 : 14;
@@ -1106,14 +1106,14 @@ function getSeasonalityRows(filteredResults) {
 
 function getSeasonalityColor(value, maxValue) {
     if (!maxValue || value <= 0) {
-        return 'rgba(255, 255, 255, 0.04)';
+        return 'rgba(0, 0, 0, 0.03)';
     }
 
     const ratio = value / maxValue;
-    if (ratio >= 0.75) return 'rgba(239, 68, 68, 0.72)';
-    if (ratio >= 0.5) return 'rgba(245, 158, 11, 0.58)';
-    if (ratio >= 0.25) return 'rgba(99, 102, 241, 0.42)';
-    return 'rgba(99, 102, 241, 0.2)';
+    if (ratio >= 0.75) return 'rgba(255, 59, 48, 0.55)';
+    if (ratio >= 0.5) return 'rgba(255, 159, 10, 0.40)';
+    if (ratio >= 0.25) return 'rgba(0, 122, 255, 0.28)';
+    return 'rgba(0, 122, 255, 0.12)';
 }
 
 function renderAnalyticsSeasonalityMatrix(filteredResults) {
@@ -1320,12 +1320,12 @@ function applyFilters() {
             maxZoom: 15,
             max: filteredResults.intensity.saturationPoint > 0 ? filteredResults.intensity.saturationPoint : 1,
             gradient: {
-                0.0: '#0d0887',
-                0.2: '#5302a3',
-                0.4: '#8b0aa5',
-                0.6: '#db5c68',
-                0.8: '#febd2a',
-                1.0: '#f0f921'
+                0.0: 'rgba(0, 122, 255, 0.0)',
+                0.2: 'rgba(0, 122, 255, 0.45)',
+                0.4: 'rgba(90, 200, 250, 0.65)',
+                0.6: 'rgba(255, 159, 10, 0.75)',
+                0.8: 'rgba(255, 69, 58, 0.85)',
+                1.0: 'rgba(255, 59, 48, 0.95)'
             }
         }).addTo(map);
     } else if (currentMapMode === 'wards') {
@@ -1404,7 +1404,7 @@ function updateChoropleth(filteredResults) {
         const layer = e.target;
         layer.setStyle({
             weight: 4,
-            color: '#6366f1',
+            color: '#007AFF',
             dashArray: '',
             fillOpacity: 0.7
         });
