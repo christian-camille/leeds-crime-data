@@ -1,5 +1,7 @@
 let map;
-let heatLayer;
+let gridLayer;
+let gridLegend;
+let currentGridSize = 100;
 let crimeData = null;
 let searchData = null;
 let searchCircle = null;
@@ -768,27 +770,183 @@ function getIntensitySettings(locationTotals) {
     };
 }
 
-function buildHeatPoints(locationTotals, minFilter) {
-    return Object.values(locationTotals).reduce((points, location) => {
-        if (location.count >= minFilter) {
-            points.push([location.lat, location.lon, location.count]);
+
+// Grid cell dimensions derived from actual data spacing
+// Data is on an 80×80 grid: lat step ≈ 0.003 (~334m), lng step ≈ 0.006 (~387m)
+const GRID_CONSTANTS = {
+    100: { latStep: 0.003, lngStep: 0.006 },
+    50:  { latStep: 0.0015, lngStep: 0.003 }
+};
+
+function aggregateByGrid(locationTotals, cellSizeMeters, minFilter) {
+    const { latStep, lngStep } = GRID_CONSTANTS[cellSizeMeters];
+    const gridCells = {};
+
+    Object.values(locationTotals).forEach(location => {
+        if (location.count < minFilter) return;
+
+        const gridLat = Math.floor(location.lat / latStep) * latStep;
+        const gridLng = Math.floor(location.lon / lngStep) * lngStep;
+        const key = `${gridLat.toFixed(6)},${gridLng.toFixed(6)}`;
+
+        if (!gridCells[key]) {
+            gridCells[key] = { lat: gridLat, lng: gridLng, count: 0 };
         }
-        return points;
-    }, []);
+        gridCells[key].count += location.count;
+    });
+
+    return gridCells;
+}
+
+const GRID_COLORS = [
+    '#FFEDA0',
+    '#FEB24C',
+    '#FD8D3C',
+    '#FC4E2A',
+    '#F03523',
+    '#E31A1C',
+    '#BD0026',
+    '#800026'
+];
+
+function buildGridThresholdsAndRanges(gridCells) {
+    const counts = Object.values(gridCells).map(c => c.count).sort((a, b) => a - b);
+    if (counts.length === 0) return { thresholds: [], ranges: [], colors: [] };
+
+    const minCount = counts[0];
+    const maxCount = counts[counts.length - 1];
+
+    if (minCount === maxCount) {
+        return {
+            thresholds: [],
+            ranges: [[minCount, maxCount]],
+            colors: [GRID_COLORS[0]]
+        };
+    }
+
+    const numBuckets = Math.min(GRID_COLORS.length, Math.max(1, maxCount - minCount + 1));
+    const rawThresholds = [];
+    for (let i = 1; i < numBuckets; i++) {
+        const idx = Math.floor((i / numBuckets) * counts.length);
+        rawThresholds.push(counts[Math.min(idx, counts.length - 1)]);
+    }
+
+    // Ensure thresholds strictly increase from minCount up to < maxCount
+    const thresholds = [];
+    let prev = minCount;
+    for (const t of rawThresholds) {
+        const candidate = Math.max(t, prev + 1);
+        if (candidate < maxCount) {
+            thresholds.push(candidate);
+            prev = candidate;
+        }
+    }
+
+    const ranges = [];
+    let start = minCount;
+    for (const t of thresholds) {
+        ranges.push([start, t - 1]);
+        start = t;
+    }
+    ranges.push([start, maxCount]);
+
+    // Pick evenly spaced colors matching the number of active ranges
+    const colors = [];
+    const step = (GRID_COLORS.length - 1) / Math.max(1, ranges.length - 1);
+    for (let i = 0; i < ranges.length; i++) {
+        colors.push(GRID_COLORS[Math.round(i * step)]);
+    }
+
+    return { thresholds, ranges, colors };
+}
+
+function getGridColor(count, thresholds, colors) {
+    for (let i = thresholds.length - 1; i >= 0; i--) {
+        if (count >= thresholds[i]) {
+            return colors[i + 1];
+        }
+    }
+    return colors[0];
+}
+
+function buildGridLayer(gridCells, cellSizeMeters) {
+    const { latStep, lngStep } = GRID_CONSTANTS[cellSizeMeters];
+    const { thresholds, ranges, colors } = buildGridThresholdsAndRanges(gridCells);
+    const group = L.featureGroup();
+
+    Object.values(gridCells).forEach(cell => {
+        const bounds = [
+            [cell.lat, cell.lng],
+            [cell.lat + latStep, cell.lng + lngStep]
+        ];
+
+        const rect = L.rectangle(bounds, {
+            weight: 2,
+            opacity: 1,
+            color: 'white',
+            dashArray: '3',
+            fillColor: getGridColor(cell.count, thresholds, colors),
+            fillOpacity: 0.55,
+            interactive: true
+        });
+
+        rect.bindTooltip(`<strong>${cell.count.toLocaleString()}</strong> crimes`, {
+            sticky: true,
+            className: 'grid-tooltip'
+        });
+
+        group.addLayer(rect);
+    });
+
+    return { layer: group, thresholds, ranges, colors };
+}
+
+function updateGridLegend(legendData, gridCells) {
+    if (gridLegend) {
+        gridLegend.remove();
+        gridLegend = null;
+    }
+
+    if (!legendData || !legendData.ranges || legendData.ranges.length === 0 || Object.keys(gridCells).length === 0) return;
+
+    gridLegend = L.control({ position: 'bottomright' });
+
+    gridLegend.onAdd = function () {
+        const div = L.DomUtil.create('div', 'grid-legend');
+        let html = '<h4>Crime Density</h4>';
+
+        const { ranges, colors } = legendData;
+
+        for (let i = 0; i < ranges.length; i++) {
+            const [from, to] = ranges[i];
+            const label = from === to
+                ? from.toLocaleString()
+                : `${from.toLocaleString()} – ${to.toLocaleString()}`;
+
+            html += `<div class="grid-legend-item">
+                <span class="grid-legend-swatch" style="background:${colors[i]}"></span>
+                ${label}
+            </div>`;
+        }
+
+        div.innerHTML = html;
+        L.DomEvent.disableClickPropagation(div);
+        return div;
+    };
+
+    gridLegend.addTo(map);
 }
 
 function buildFilteredResults(params) {
     const points = filterPoints(params);
     const locationTotals = aggregateByLocation(points);
     const intensity = getIntensitySettings(locationTotals);
-    const heatPoints = buildHeatPoints(locationTotals, intensity.minFilter);
 
     return {
         params,
         points,
         totalCrimes: points.reduce((sum, point) => sum + point[5], 0),
         locationTotals,
-        heatPoints,
         intensity,
         aggregations: {
             byCrimeType: aggregateByCrimeType(points),
@@ -1310,29 +1468,22 @@ function applyFilters() {
     if (currentMapMode === 'heatmap') {
         if (geoJsonLayer) map.removeLayer(geoJsonLayer);
 
-        if (heatLayer) {
-            map.removeLayer(heatLayer);
+        if (gridLayer) {
+            map.removeLayer(gridLayer);
         }
 
-        heatLayer = L.heatLayer(filteredResults.heatPoints, {
-            radius: 25,
-            blur: 35,
-            maxZoom: 15,
-            max: filteredResults.intensity.saturationPoint > 0 ? filteredResults.intensity.saturationPoint : 1,
-            gradient: {
-                0.0: 'rgba(0, 122, 255, 0.0)',
-                0.2: 'rgba(0, 122, 255, 0.45)',
-                0.4: 'rgba(90, 200, 250, 0.65)',
-                0.6: 'rgba(255, 159, 10, 0.75)',
-                0.8: 'rgba(255, 69, 58, 0.85)',
-                1.0: 'rgba(255, 59, 48, 0.95)'
-            }
-        }).addTo(map);
+        const gridCells = aggregateByGrid(filteredResults.locationTotals, currentGridSize, filteredResults.intensity.minFilter);
+        const gridResult = buildGridLayer(gridCells, currentGridSize);
+        gridLayer = gridResult.layer;
+        gridLayer.addTo(map);
+        updateGridLegend(gridResult, gridCells);
     } else if (currentMapMode === 'wards') {
-        if (heatLayer) map.removeLayer(heatLayer);
+        if (gridLayer) map.removeLayer(gridLayer);
+        if (gridLegend) { gridLegend.remove(); gridLegend = null; }
         updateChoropleth(filteredResults);
     } else {
-        if (heatLayer) map.removeLayer(heatLayer);
+        if (gridLayer) map.removeLayer(gridLayer);
+        if (gridLegend) { gridLegend.remove(); gridLegend = null; }
         if (geoJsonLayer) map.removeLayer(geoJsonLayer);
     }
 
@@ -1552,6 +1703,13 @@ function resetFilters() {
         intensitySlider.set([0, 90]);
     }
 
+    // Reset grid size to 100m
+    currentGridSize = 100;
+    const g100 = document.getElementById('grid-100');
+    const g50 = document.getElementById('grid-50');
+    if (g100) g100.classList.add('active');
+    if (g50) g50.classList.remove('active');
+
     applyFilters();
 }
 
@@ -1617,6 +1775,23 @@ viewHeatmapBtn.addEventListener('click', () => setMapMode('heatmap'));
 viewWardsBtn.addEventListener('click', () => setMapMode('wards'));
 viewSearchBtn.addEventListener('click', () => setMapMode('search'));
 viewAnalyticsBtn.addEventListener('click', () => setMapMode('analytics'));
+
+// Grid size toggle
+const grid100Btn = document.getElementById('grid-100');
+const grid50Btn = document.getElementById('grid-50');
+
+function setGridSize(size) {
+    if (currentGridSize === size) return;
+    currentGridSize = size;
+    grid100Btn.classList.toggle('active', size === 100);
+    grid50Btn.classList.toggle('active', size === 50);
+    if (currentMapMode === 'heatmap') {
+        applyFilters();
+    }
+}
+
+if (grid100Btn) grid100Btn.addEventListener('click', () => setGridSize(100));
+if (grid50Btn) grid50Btn.addEventListener('click', () => setGridSize(50));
 
 function restoreDateRangeGroup() {
     const dateRangeGroup = document.getElementById('date-range-group');
@@ -1701,6 +1876,8 @@ function setMapMode(mode) {
         if (geoJsonLayer) map.removeLayer(geoJsonLayer);
         dateRangeGroup.classList.remove('hidden');
         intensityGroup.classList.remove('hidden');
+        const gridSizeGroup = document.getElementById('grid-size-group');
+        if (gridSizeGroup) gridSizeGroup.classList.remove('hidden');
         searchGroup.classList.add('hidden');
         statsPanel.classList.remove('hidden');
         chartPanel.classList.remove('hidden');
@@ -1709,7 +1886,10 @@ function setMapMode(mode) {
             window.infoControlAdded = false;
         }
     } else if (mode === 'wards') {
-        if (heatLayer) map.removeLayer(heatLayer);
+        if (gridLayer) map.removeLayer(gridLayer);
+        if (gridLegend) { gridLegend.remove(); gridLegend = null; }
+        const gridSizeGroup = document.getElementById('grid-size-group');
+        if (gridSizeGroup) gridSizeGroup.classList.add('hidden');
         dateRangeGroup.classList.remove('hidden');
         intensityGroup.classList.add('hidden');
         searchGroup.classList.add('hidden');
@@ -1722,10 +1902,13 @@ function setMapMode(mode) {
     } else if (mode === 'search') {
         dateRangeGroup.classList.remove('hidden');
         intensityGroup.classList.add('hidden');
+        const gridSizeGroup = document.getElementById('grid-size-group');
+        if (gridSizeGroup) gridSizeGroup.classList.add('hidden');
         searchGroup.classList.remove('hidden');
         statsPanel.classList.add('hidden');
         chartPanel.classList.add('hidden');
-        if (heatLayer) map.removeLayer(heatLayer);
+        if (gridLayer) map.removeLayer(gridLayer);
+        if (gridLegend) { gridLegend.remove(); gridLegend = null; }
         if (geoJsonLayer) map.removeLayer(geoJsonLayer);
         if (window.infoControlAdded) {
             info.remove();
@@ -1738,10 +1921,13 @@ function setMapMode(mode) {
     } else {
         dateRangeGroup.classList.remove('hidden');
         intensityGroup.classList.add('hidden');
+        const gridSizeGroup = document.getElementById('grid-size-group');
+        if (gridSizeGroup) gridSizeGroup.classList.add('hidden');
         searchGroup.classList.add('hidden');
         statsPanel.classList.add('hidden');
         chartPanel.classList.add('hidden');
-        if (heatLayer) map.removeLayer(heatLayer);
+        if (gridLayer) map.removeLayer(gridLayer);
+        if (gridLegend) { gridLegend.remove(); gridLegend = null; }
         if (geoJsonLayer) map.removeLayer(geoJsonLayer);
         if (window.infoControlAdded) {
             info.remove();

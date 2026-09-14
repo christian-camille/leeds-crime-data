@@ -13,7 +13,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css?v=4">
+    <link rel="stylesheet" href="styles.css?v=5">
 </head>
 
 <body>
@@ -109,6 +109,14 @@
                 <div class="control-group" id="intensity-group">
                     <label>Intensity / Sensitivity</label>
                     <div id="intensity-slider" class="range-slider"></div>
+                </div>
+
+                <div class="control-group" id="grid-size-group">
+                    <label>Grid Size</label>
+                    <div class="toggle-buttons">
+                        <button id="grid-100" class="view-btn active" type="button">Standard</button>
+                        <button id="grid-50" class="view-btn" type="button">Fine</button>
+                    </div>
                 </div>
 
                 <button id="reset-filters" class="btn-secondary">Reset</button>
@@ -280,9 +288,8 @@
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.7.1/nouislider.min.js"></script>
-    <script src="app.js?v=5"></script>
+    <script src="app.js?v=6"></script>
 </body>
 
 </html>
