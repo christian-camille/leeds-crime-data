@@ -809,34 +809,41 @@ const GRID_COLORS = [
     '#800026'
 ];
 
-function buildGridThresholdsAndRanges(gridCells) {
+function buildGridThresholdsAndRanges(gridCells, sensitivityPercent = 100) {
     const counts = Object.values(gridCells).map(c => c.count).sort((a, b) => a - b);
     if (counts.length === 0) return { thresholds: [], ranges: [], colors: [] };
 
     const minCount = counts[0];
-    const maxCount = counts[counts.length - 1];
+    const actualMax = counts[counts.length - 1];
 
-    if (minCount === maxCount) {
+    if (minCount === actualMax) {
         return {
             thresholds: [],
-            ranges: [[minCount, maxCount]],
+            ranges: [[minCount, actualMax]],
             colors: [GRID_COLORS[0]]
         };
     }
 
-    const numBuckets = Math.min(GRID_COLORS.length, Math.max(1, maxCount - minCount + 1));
+    // Determine saturation threshold based on sensitivity percentile
+    const satIdx = Math.floor((Math.max(1, Math.min(100, sensitivityPercent)) / 100) * counts.length);
+    const saturationPoint = counts[Math.min(satIdx, counts.length - 1)];
+    const capMax = Math.max(minCount, saturationPoint);
+
+    // Bins span up to capMax; cells >= capMax reach top heat intensity
+    const subset = counts.filter(c => c <= capMax);
+    const numBuckets = Math.min(GRID_COLORS.length, Math.max(1, capMax - minCount + 1));
     const rawThresholds = [];
     for (let i = 1; i < numBuckets; i++) {
-        const idx = Math.floor((i / numBuckets) * counts.length);
-        rawThresholds.push(counts[Math.min(idx, counts.length - 1)]);
+        const idx = Math.floor((i / numBuckets) * subset.length);
+        rawThresholds.push(subset[Math.min(idx, subset.length - 1)]);
     }
 
-    // Ensure thresholds strictly increase from minCount up to < maxCount
+    // Ensure thresholds strictly increase from minCount up to < capMax
     const thresholds = [];
     let prev = minCount;
     for (const t of rawThresholds) {
         const candidate = Math.max(t, prev + 1);
-        if (candidate < maxCount) {
+        if (candidate < capMax) {
             thresholds.push(candidate);
             prev = candidate;
         }
@@ -848,7 +855,13 @@ function buildGridThresholdsAndRanges(gridCells) {
         ranges.push([start, t - 1]);
         start = t;
     }
-    ranges.push([start, maxCount]);
+
+    // Last range reaches capMax+ (or actualMax if not capped)
+    if (capMax < actualMax) {
+        ranges.push([start, `${capMax.toLocaleString()}+`]);
+    } else {
+        ranges.push([start, actualMax]);
+    }
 
     // Pick evenly spaced colors matching the number of active ranges
     const colors = [];
@@ -869,9 +882,9 @@ function getGridColor(count, thresholds, colors) {
     return colors[0];
 }
 
-function buildGridLayer(gridCells, cellSizeMeters) {
+function buildGridLayer(gridCells, cellSizeMeters, sensitivityPercent = 100) {
     const { latStep, lngStep } = GRID_CONSTANTS[cellSizeMeters];
-    const { thresholds, ranges, colors } = buildGridThresholdsAndRanges(gridCells);
+    const { thresholds, ranges, colors } = buildGridThresholdsAndRanges(gridCells, sensitivityPercent);
     const group = L.featureGroup();
 
     Object.values(gridCells).forEach(cell => {
@@ -1473,7 +1486,7 @@ function applyFilters() {
         }
 
         const gridCells = aggregateByGrid(filteredResults.locationTotals, currentGridSize, filteredResults.intensity.minFilter);
-        const gridResult = buildGridLayer(gridCells, currentGridSize);
+        const gridResult = buildGridLayer(gridCells, currentGridSize, filteredResults.intensity.sensitivityPercent);
         gridLayer = gridResult.layer;
         gridLayer.addTo(map);
         updateGridLegend(gridResult, gridCells);
